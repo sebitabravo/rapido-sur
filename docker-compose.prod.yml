@@ -1,0 +1,154 @@
+# ================================
+# Docker Compose for PRODUCTION
+# ================================
+# This file is a reference for production deployment on Hostinger with Dokploy.
+# Dokploy will manage the actual deployment, but this file documents the configuration.
+#
+# DO NOT use this file directly in production. Configure via Dokploy UI.
+# Use for local testing of production build: docker-compose -f docker-compose.prod.yml up
+
+version: "3.8"
+
+services:
+  # Backend API (NestJS) - Production Build
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: rapido-sur-backend-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # IMPORTANT: These are EXAMPLES. Set actual values in Dokploy UI.
+      NODE_ENV: production
+      PORT: 3000
+
+      # Database - Set via Dokploy environment variables
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+
+      # JWT - MUST be secure random string
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 24h
+
+      # CORS - Production frontend URL
+      FRONTEND_URL: ${FRONTEND_URL}
+
+      # Email - Production SMTP
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SECURE: ${MAIL_SECURE:-false}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-noreply@rapidosur.cl}
+      MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL}
+
+      # Cron - Enable in production
+      ENABLE_CRON: ${ENABLE_CRON:-true}
+      ALERTS_CRON_SCHEDULE: ${ALERTS_CRON_SCHEDULE:-0 6 * * *}
+
+      # Logging - Info level for production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # Rate limiting
+      THROTTLE_TTL: ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-100}
+
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits (adjust based on VPS capacity)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+# ================================
+# NOTES FOR DOKPLOY DEPLOYMENT
+# ================================
+#
+# 1. Database Configuration:
+#    - Create PostgreSQL database in Hostinger control panel
+#    - Note: Host, Port, Username, Password, Database name
+#    - Set these as environment variables in Dokploy
+#
+# 2. Environment Variables (set in Dokploy UI):
+#    Required:
+#      - NODE_ENV=production
+#      - DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE
+#      - JWT_SECRET (generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+#      - FRONTEND_URL (your production frontend URL)
+#      - MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASSWORD
+#      - MAINTENANCE_MANAGER_EMAIL
+#
+#    Optional (with defaults):
+#      - JWT_EXPIRATION=24h
+#      - ENABLE_CRON=true
+#      - ALERTS_CRON_SCHEDULE=0 6 * * *
+#      - LOG_LEVEL=info
+#      - THROTTLE_TTL=60000
+#      - THROTTLE_LIMIT=100
+#
+# 3. GitHub Integration:
+#    - Connect your GitHub repository to Dokploy
+#    - Set branch to "main"
+#    - Dokploy will auto-deploy on push
+#
+# 4. Domain Configuration:
+#    - Configure your domain in Hostinger DNS
+#    - Point to your VPS IP address
+#    - Enable SSL/TLS in Dokploy (Let's Encrypt)
+#
+# 5. Health Checks:
+#    - Dokploy will use /health endpoint
+#    - Ensure it returns 200 OK
+#
+# 6. First Deployment:
+#    - Deploy backend first
+#    - Run migrations: docker exec -it rapido-sur-backend-prod npm run migration:run
+#    - (Optional) Seed initial data: docker exec -it rapido-sur-backend-prod npm run seed
+#
+# 7. Monitoring:
+#    - Check logs in Dokploy dashboard
+#    - Monitor health endpoint: curl https://your-domain.com/health
+#    - Set up email notifications for failures
+#
+# 8. Backups (CRITICAL):
+#    - Configure daily PostgreSQL backups
+#    - Store backups off-server
+#    - Test restoration regularly
+#
+# 9. Security Checklist:
+#    - [ ] JWT_SECRET is secure and unique
+#    - [ ] Database password is strong
+#    - [ ] HTTPS/SSL is enabled
+#    - [ ] CORS is configured correctly
+#    - [ ] Rate limiting is appropriate
+#    - [ ] Firewall rules are set
+#    - [ ] Only necessary ports are exposed
+#
+# 10. Performance Tuning:
+#     - Adjust resource limits based on traffic
+#     - Monitor CPU and memory usage
+#     - Scale horizontally if needed (multiple instances)
+#     - Consider Redis for caching (future enhancement)
