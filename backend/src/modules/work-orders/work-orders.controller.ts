@@ -28,6 +28,7 @@ import { CreateOrdenTrabajoDto } from "./dto/create-orden-trabajo.dto";
 import { AsignarMecanicoDto } from "./dto/asignar-mecanico.dto";
 import { RegistrarTrabajoDto } from "./dto/registrar-trabajo.dto";
 import { FilterOrdenTrabajoDto } from "./dto/filter-orden-trabajo.dto";
+import { UpdateStatusDto } from "./dto/update-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -153,6 +154,39 @@ export class WorkOrdersController {
   @Get(":id")
   async findOne(@Param("id", ParseIntPipe) id: number): Promise<OrdenTrabajo> {
     return this.workOrdersService.findOne(id);
+  }
+
+  /**
+   * PATCH /ordenes-trabajo/:id/estado
+   * Update work order status (Admin and Maintenance Manager only)
+   */
+  @ApiOperation({
+    summary: "Actualizar estado de orden de trabajo",
+    description:
+      "Actualiza el estado de una orden de trabajo. Solo Admin y Jefe de Mantenimiento.",
+  })
+  @ApiParam({
+    name: "id",
+    type: Number,
+    description: "ID de la orden de trabajo",
+  })
+  @ApiBody({ type: UpdateStatusDto })
+  @ApiResponse({
+    status: 200,
+    description: "Estado actualizado exitosamente",
+  })
+  @ApiForbiddenResponse({
+    description: "No tienes permisos para actualizar estados",
+  })
+  @ApiNotFoundResponse({ description: "Orden de trabajo no encontrada" })
+  @Patch(":id/estado")
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  async updateStatus(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateStatusDto,
+  ): Promise<OrdenTrabajo> {
+    return this.workOrdersService.updateStatus(id, dto.estado);
   }
 
   /**

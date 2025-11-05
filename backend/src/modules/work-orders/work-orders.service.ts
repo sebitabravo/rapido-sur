@@ -402,4 +402,26 @@ export class WorkOrdersService {
 
     await this.planRepo.save(plan);
   }
+
+  /**
+   * Update work order status
+   * Allows manual status changes when needed
+   */
+  async updateStatus(
+    id: number,
+    nuevoEstado: EstadoOrdenTrabajo,
+  ): Promise<OrdenTrabajo> {
+    const orden = await this.findOne(id);
+
+    this.logger.log(
+      `Updating work order ${id} status from ${orden.estado} to ${nuevoEstado}`,
+    );
+
+    // Update estado
+    orden.estado = nuevoEstado;
+    await this.otRepo.save(orden);
+
+    // Return updated order with relations
+    return this.findOne(id);
+  }
 }
