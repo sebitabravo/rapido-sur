@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { ArrowLeft, Truck, Wrench, AlertTriangle, TrendingUp } from "lucide-react"
+import { PreventivePlanDialog } from "@/components/preventive-plan-dialog"
+import { ArrowLeft, Truck, Wrench, AlertTriangle, TrendingUp, Calendar, Plus, Edit } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
@@ -47,6 +48,21 @@ interface Alert {
   activa: boolean
 }
 
+interface PreventivePlan {
+  id: number
+  tipo_mantenimiento: string
+  tipo_intervalo: string
+  intervalo: number
+  descripcion: string
+  proximo_kilometraje?: number
+  proxima_fecha?: string
+  activo: boolean
+  vehiculo: {
+    id: number
+    patente: string
+  }
+}
+
 export default function VehicleDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -55,7 +71,9 @@ export default function VehicleDetailPage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
+  const [preventivePlan, setPreventivePlan] = useState<PreventivePlan | null>(null)
   const [loading, setLoading] = useState(true)
+  const [planDialogOpen, setPlanDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -81,11 +99,27 @@ export default function VehicleDetailPage() {
       const allAlerts = alertsRes.data || []
       const vehicleAlerts = allAlerts.filter((alert: any) => alert.vehiculo?.id === Number(vehicleId))
       setAlerts(vehicleAlerts)
+
+      // Load preventive plan for this vehicle
+      await loadPreventivePlan()
     } catch (error) {
       console.error("[v0] Error loading vehicle data:", error)
       toast.error("Error al cargar los datos del vehículo")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPreventivePlan = async () => {
+    try {
+      const response = await api.preventivePlans.getByVehicle(Number(vehicleId))
+      setPreventivePlan(response.data)
+    } catch (error: any) {
+      // It's normal for a vehicle to not have a plan yet
+      if (error.response?.status !== 404) {
+        console.error("[v0] Error loading preventive plan:", error)
+      }
+      setPreventivePlan(null)
     }
   }
 
@@ -223,6 +257,87 @@ export default function VehicleDetailPage() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Preventive Plan Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <CardTitle>Plan de Mantenimiento Preventivo</CardTitle>
+              </div>
+              {preventivePlan ? (
+                <Button variant="outline" size="sm" onClick={() => setPlanDialogOpen(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Plan
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => setPlanDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Plan
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {preventivePlan ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Tipo de Mantenimiento</p>
+                  <p className="font-medium">{preventivePlan.tipo_mantenimiento}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tipo de Intervalo</p>
+                  <p className="font-medium">
+                    {preventivePlan.tipo_intervalo === "KM" ? "Por Kilometraje" : "Por Tiempo"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Intervalo</p>
+                  <p className="font-medium">
+                    {preventivePlan.intervalo.toLocaleString()}{" "}
+                    {preventivePlan.tipo_intervalo === "KM" ? "km" : "días"}
+                  </p>
+                </div>
+                {preventivePlan.tipo_intervalo === "KM" && preventivePlan.proximo_kilometraje && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Próximo Mantenimiento</p>
+                    <p className="font-medium">{preventivePlan.proximo_kilometraje.toLocaleString()} km</p>
+                  </div>
+                )}
+                {preventivePlan.tipo_intervalo === "Tiempo" && preventivePlan.proxima_fecha && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Próxima Fecha</p>
+                    <p className="font-medium">
+                      {format(new Date(preventivePlan.proxima_fecha), "dd/MM/yyyy", { locale: es })}
+                    </p>
+                  </div>
+                )}
+                <div className="md:col-span-2">
+                  <p className="text-sm text-muted-foreground">Descripción</p>
+                  <p className="font-medium">{preventivePlan.descripcion}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado</p>
+                  <Badge variant={preventivePlan.activo ? "default" : "secondary"}>
+                    {preventivePlan.activo ? "Activo" : "Inactivo"}
+                  </Badge>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  Este vehículo no tiene un plan de mantenimiento preventivo configurado
+                </p>
+                <Button onClick={() => setPlanDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Plan Preventivo
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -392,6 +507,18 @@ export default function VehicleDetailPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Preventive Plan Dialog */}
+      <PreventivePlanDialog
+        open={planDialogOpen}
+        onOpenChange={setPlanDialogOpen}
+        plan={preventivePlan}
+        vehicleId={Number(vehicleId)}
+        onSave={() => {
+          setPlanDialogOpen(false)
+          loadPreventivePlan()
+        }}
+      />
     </div>
   )
 }

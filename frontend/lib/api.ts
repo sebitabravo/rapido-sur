@@ -135,6 +135,8 @@ export const api = {
     create: (data: any) => apiClient.post("/ordenes-trabajo", data),
     update: (id: number, data: any) => apiClient.put(`/ordenes-trabajo/${id}`, data),
     updateStatus: (id: number, estado: string) => apiClient.patch(`/ordenes-trabajo/${id}/estado`, { estado }),
+    assignMechanic: (id: number, mecanico_id: number) =>
+      apiClient.patch(`/ordenes-trabajo/${id}/asignar`, { mecanico_id }),
   },
 
   // Alerts
