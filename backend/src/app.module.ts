@@ -34,8 +34,30 @@ import { ReportsModule } from "./modules/reports/reports.module";
         password: configService.get("DB_PASSWORD"),
         database: configService.get("DB_DATABASE"),
         entities: [__dirname + "/**/*.entity{.ts,.js}"],
+
+        // IMPORTANT: Use migrations in production, not synchronize
+        // synchronize: true drops tables and recreates them, losing data
         synchronize: configService.get("NODE_ENV") === "development",
+
+        // Enable logging in development for debugging
         logging: configService.get("NODE_ENV") === "development",
+
+        // Auto-run migrations on application start (production)
+        // Only enable if you want automatic migrations
+        migrationsRun: configService.get("NODE_ENV") === "production",
+
+        // Connection retry logic - critical for Docker/Dokploy
+        // Postgres container might not be ready immediately
+        retryAttempts: 10,
+        retryDelay: 3000, // 3 seconds between retries
+
+        // Connection pool settings for better performance
+        extra: {
+          max: 20, // Maximum number of connections
+          min: 2, // Minimum number of connections
+          connectionTimeoutMillis: 10000, // 10 seconds
+          idleTimeoutMillis: 30000, // 30 seconds
+        },
       }),
       inject: [ConfigService],
     }),

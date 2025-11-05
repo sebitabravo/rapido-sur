@@ -10,13 +10,16 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
 # Build TypeScript to JavaScript
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --production --legacy-peer-deps
 
 # ================================
 # Stage 2: Production
@@ -39,15 +42,14 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files
 COPY package*.json ./
 
-# Install ONLY production dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Copy production node_modules from builder
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy compiled code from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy necessary files
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma 2>/dev/null || true
+# Copy .env.example for reference (actual .env comes from Dokploy)
+COPY .env.example ./
 
 # Change ownership to non-root user
 RUN chown -R nestjs:nodejs /app

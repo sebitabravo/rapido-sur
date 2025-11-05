@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   OneToMany,
   OneToOne,
 } from "typeorm";
@@ -96,6 +97,14 @@ export class Vehiculo {
 
   @UpdateDateColumn({ type: "timestamp" })
   updated_at: Date;
+
+  /**
+   * Soft delete timestamp
+   * When a vehicle is deleted, this field is set to the deletion timestamp
+   * Allows for data recovery and auditing
+   */
+  @DeleteDateColumn({ type: "timestamp", nullable: true })
+  deleted_at: Date;
 
   /**
    * Relationships

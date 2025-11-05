@@ -156,7 +156,9 @@ export class UsersService {
   }
 
   /**
-   * Soft delete user (set activo = false)
+   * Soft delete user (set activo = false and deleted_at timestamp)
+   * Uses TypeORM soft delete which sets deleted_at timestamp
+   * Also marks user as inactive for additional safety
    */
   async remove(id: number): Promise<void> {
     const usuario = await this.usuarioRepo.findOne({ where: { id } });
@@ -178,10 +180,15 @@ export class UsersService {
       }
     }
 
+    // Mark as inactive AND soft delete (sets deleted_at)
     usuario.activo = false;
     await this.usuarioRepo.save(usuario);
+
+    // Perform TypeORM soft delete (sets deleted_at timestamp)
+    await this.usuarioRepo.softRemove(usuario);
+
     this.logger.warn(
-      `User deactivated: ${usuario.email} (ID: ${id}) - Role: ${usuario.rol}`,
+      `User soft deleted: ${usuario.email} (ID: ${id}) - Role: ${usuario.rol}`,
     );
   }
 

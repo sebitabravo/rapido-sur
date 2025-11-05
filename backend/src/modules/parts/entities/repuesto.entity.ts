@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   OneToMany,
   Check,
 } from "typeorm";
@@ -76,6 +77,14 @@ export class Repuesto {
 
   @UpdateDateColumn({ type: "timestamp" })
   updated_at: Date;
+
+  /**
+   * Soft delete timestamp
+   * When a part is deleted, this field is set to the deletion timestamp
+   * Allows for data recovery and auditing
+   */
+  @DeleteDateColumn({ type: "timestamp", nullable: true })
+  deleted_at: Date;
 
   /**
    * Relationships

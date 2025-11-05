@@ -166,7 +166,8 @@ export class VehiclesService {
   }
 
   /**
-   * Soft delete vehicle
+   * Soft delete vehicle (set estado = Inactivo and deleted_at timestamp)
+   * Prevents deletion if vehicle has active work orders
    */
   async remove(id: number): Promise<void> {
     const vehiculo = await this.vehiculoRepo
@@ -185,8 +186,13 @@ export class VehiclesService {
     }
 
     const veh = await this.findOne(id);
+
+    // Mark as inactive AND soft delete (sets deleted_at)
     veh.estado = EstadoVehiculo.Inactivo;
     await this.vehiculoRepo.save(veh);
+
+    // Perform TypeORM soft delete (sets deleted_at timestamp)
+    await this.vehiculoRepo.softRemove(veh);
   }
 
   /**

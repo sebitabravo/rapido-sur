@@ -1,12 +1,17 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, Logger } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const logger = new Logger("Bootstrap");
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Use NestJS logger instead of console.log
+    logger: ["error", "warn", "log", "debug", "verbose"],
+  });
 
   // Security headers with Helmet
   app.use(
@@ -145,10 +150,16 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+
+  // Use logger instead of console.log for structured logging
+  logger.log(`🚀 Application is running on: http://localhost:${port}`);
+  logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  logger.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+  logger.log(`🗄️  Database: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_DATABASE}`);
 }
+
 bootstrap().catch((error) => {
-  console.error("❌ Error starting application:", error);
+  const logger = new Logger("Bootstrap");
+  logger.error("❌ Error starting application:", error);
   process.exit(1);
 });

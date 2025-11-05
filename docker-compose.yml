@@ -1,104 +1,132 @@
-version: "3.8"
+# ================================
+# Docker Compose para PRODUCCIÓN (Dokploy)
+# ================================
+# Este archivo está optimizado para deployment en Dokploy/Hostinger
+#
+# IMPORTANTE PARA DOKPLOY:
+# 1. Dokploy usa este archivo automáticamente desde la raíz del proyecto
+# 2. PostgreSQL se configura como servicio separado en Dokploy UI
+# 3. Frontend se despliega como aplicación separada en Dokploy
+# 4. Las variables de entorno se configuran en Dokploy UI (ver backend/.env.example)
+# 5. Dokploy maneja automáticamente los certificados SSL con Let's Encrypt
+#
+# PARA DESARROLLO LOCAL:
+# Use: docker-compose -f docker-compose.dev.yml up
+# ================================
+
+version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: rapido-sur-db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: rapido_sur
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - rapido-sur-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+  # ================================
   # Backend API (NestJS)
+  # ================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: production
+      args:
+        NODE_ENV: production
+    image: rapido-sur-backend:latest
     container_name: rapido-sur-backend
     restart: always
+
+    # Port mapping
     ports:
-      - "3000:3000"
+      - '${PORT:-3000}:3000'
+
+    # ================================
+    # Environment Variables
+    # IMPORTANT: Configure these in Dokploy UI
+    # DO NOT hardcode sensitive values here
+    # ================================
     environment:
-      # Application
-      NODE_ENV: development
-      PORT: 3000
+      # Application Settings
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
 
-      # Database (use postgres service name as host)
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres123
-      DB_DATABASE: rapido_sur
+      # Database Connection (Dokploy PostgreSQL service)
+      # Dokploy will provide these values through its UI
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
 
-      # JWT
-      JWT_SECRET: dev_secret_key_change_in_production_12345
-      JWT_EXPIRATION: 24h
+      # JWT Authentication
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
 
-      # CORS
-      FRONTEND_URL: http://localhost:5173
+      # CORS Configuration
+      FRONTEND_URL: ${FRONTEND_URL}
 
-      # Email (development - disabled)
-      MAIL_HOST: smtp.gmail.com
-      MAIL_PORT: 587
-      MAIL_SECURE: false
-      MAIL_USER: dev@rapidosur.cl
-      MAIL_PASSWORD: devpassword
-      MAIL_FROM: noreply@rapidosur.cl
-      MAINTENANCE_MANAGER_EMAIL: manager@rapidosur.cl
+      # Email Configuration
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SECURE: ${MAIL_SECURE:-false}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-noreply@rapidosur.cl}
 
-      # Cron (disabled in development)
-      ENABLE_CRON: false
+      # Maintenance Alerts
+      MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL}
+      ENABLE_CRON: ${ENABLE_CRON:-true}
+      ALERTS_CRON_SCHEDULE: ${ALERTS_CRON_SCHEDULE:-0 6 * * *}
 
-      # Logging
-      LOG_LEVEL: debug
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - rapido-sur-network
+      # Logging & Monitoring
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # Rate Limiting
+      THROTTLE_TTL: ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-10}
+
+    # ================================
+    # Persistent Volumes (Dokploy pattern)
+    # Using ../files/ ensures data persists across deployments
+    # ================================
     volumes:
-      # Mount source code for hot reload in development
-      - ./backend/src:/app/src:ro
+      - ../files/backend-logs:/app/logs
+
+    # ================================
+    # Health Check
+    # ================================
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+      test: ['CMD-SHELL', 'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"']
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
-  # pgAdmin for database management
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: rapido-sur-pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rapidosur.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-    ports:
-      - "5050:80"
-    networks:
-      - rapido-sur-network
-    depends_on:
-      - postgres
+    # ================================
+    # Logging Configuration
+    # ================================
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+        compress: 'true'
 
-volumes:
-  postgres_data:
-    driver: local
+    # ================================
+    # Resource Limits (Optional)
+    # Uncomment if needed for your VPS
+    # ================================
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 256M
 
-networks:
-  rapido-sur-network:
-    driver: bridge
+# ================================
+# NOTA IMPORTANTE:
+# ================================
+# PostgreSQL y Frontend NO están incluidos aquí porque:
+# - PostgreSQL: Dokploy lo proporciona como servicio administrado separado
+# - Frontend: Se despliega como aplicación separada en Dokploy para mejor escalabilidad
+#
+# Para desarrollo local completo use:
+# docker-compose -f docker-compose.dev.yml up
+# ================================

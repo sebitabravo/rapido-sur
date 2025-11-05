@@ -16,6 +16,7 @@ Sistema de gestión de mantenimiento vehicular para la flota de Rápido Sur (45 
 - [Ejecución Local](#ejecución-local)
 - [Testing](#testing)
 - [Build para Producción](#build-para-producción)
+- [Deployment en Dokploy](#deployment-en-dokploy)
 - [Documentación API](#documentación-api)
 - [Arquitectura](#arquitectura)
 - [Equipo](#equipo)
@@ -160,6 +161,52 @@ npm run build
 
 # Ejecutar producción
 npm run start:prod
+```
+
+---
+
+## 🚀 Deployment en Dokploy
+
+### Quick Start (10 minutos)
+
+Ver guía rápida: **[DEPLOYMENT_QUICK_START.md](./DEPLOYMENT_QUICK_START.md)**
+
+### Documentación Completa
+
+Ver guía detallada: **[DEPLOYMENT_DOKPLOY.md](./DEPLOYMENT_DOKPLOY.md)**
+
+### Generar Secrets Seguros
+
+```bash
+# Generar JWT_SECRET, DB_PASSWORD y otros secrets
+node scripts/generate-secrets.js
+```
+
+### Checklist Pre-Deployment
+
+- [ ] Variables de entorno configuradas en Dokploy
+- [ ] PostgreSQL service creado y running
+- [ ] JWT_SECRET generado (mínimo 64 caracteres)
+- [ ] SMTP configurado para emails
+- [ ] Dominio configurado con SSL (Let's Encrypt)
+- [ ] Webhook de GitHub configurado para auto-deploy
+
+### Post-Deployment
+
+```bash
+# 1. Ejecutar migraciones (primera vez)
+npm run migration:run
+
+# 2. Crear usuarios iniciales
+npm run seed
+
+# 3. Verificar health check
+curl https://api.rapidosur.com/health
+
+# 4. Probar login
+curl -X POST https://api.rapidosur.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@rapidosur.cl","password":"Admin123!"}'
 ```
 
 ---

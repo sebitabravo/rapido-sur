@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   ManyToOne,
   OneToMany,
   JoinColumn,
@@ -110,6 +111,14 @@ export class OrdenTrabajo {
 
   @UpdateDateColumn({ type: "timestamp" })
   updated_at: Date;
+
+  /**
+   * Soft delete timestamp
+   * When a work order is deleted, this field is set to the deletion timestamp
+   * Allows for data recovery and auditing
+   */
+  @DeleteDateColumn({ type: "timestamp", nullable: true })
+  deleted_at: Date;
 
   /**
    * Relationships

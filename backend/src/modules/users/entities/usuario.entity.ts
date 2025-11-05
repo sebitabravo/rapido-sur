@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   OneToMany,
 } from "typeorm";
 import {
@@ -76,6 +77,14 @@ export class Usuario {
 
   @UpdateDateColumn({ type: "timestamp" })
   updated_at: Date;
+
+  /**
+   * Soft delete timestamp
+   * When a user is deleted, this field is set to the deletion timestamp
+   * Allows for data recovery and auditing
+   */
+  @DeleteDateColumn({ type: "timestamp", nullable: true })
+  deleted_at: Date;
 
   /**
    * Relationships
