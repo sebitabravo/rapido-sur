@@ -168,11 +168,15 @@ export class PreventivePlansService {
       plan.activo = updateDto.activo;
     }
 
-    await this.planPreventivoRepository.save(plan);
+    const savedPlan = await this.planPreventivoRepository.save(plan);
 
     this.logger.log(`Plan preventivo ${id} actualizado`);
 
-    return this.findOne(id);
+    // Return the saved plan with relations
+    return this.planPreventivoRepository.findOne({
+      where: { id },
+      relations: ["vehiculo"],
+    }) as Promise<PlanPreventivo>;
   }
 
   /**
