@@ -1,16 +1,58 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import {
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PreventivePlansService } from "./preventive-plans.service";
 import { PlanPreventivo } from "./entities/plan-preventivo.entity";
+import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
+import { CreatePlanPreventivoDto } from "./dto/create-plan-preventivo.dto";
+import { UpdatePlanPreventivoDto } from "./dto/update-plan-preventivo.dto";
 import { TipoIntervalo } from "../../common/enums";
 
 describe("PreventivePlansService", () => {
   let service: PreventivePlansService;
   let planRepo: Repository<PlanPreventivo>;
+  let vehiculoRepo: Repository<Vehiculo>;
+
+  const mockVehiculo: Vehiculo = {
+    id: 1,
+    patente: "ABCD-12",
+    marca: "Mercedes-Benz",
+    modelo: "Sprinter",
+    anio: 2020,
+    tipo: "BUS",
+    estado: "OPERATIVO",
+    kilometraje_actual: 15000,
+    ultima_revision: new Date("2025-01-01"),
+    created_at: new Date(),
+    updated_at: new Date(),
+  } as any;
+
+  const mockPlanPreventivo: PlanPreventivo = {
+    id: 1,
+    vehiculo: mockVehiculo,
+    tipo_mantenimiento: "Mantenimiento General",
+    tipo_intervalo: TipoIntervalo.KM,
+    intervalo: 10000,
+    descripcion: "Cambio de aceite y filtros",
+    proximo_kilometraje: 25000,
+    proxima_fecha: null,
+    activo: true,
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
 
   const mockPlanRepo = {
     find: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
+  const mockVehiculoRepo = {
     findOne: jest.fn(),
   };
 
@@ -22,12 +64,19 @@ describe("PreventivePlansService", () => {
           provide: getRepositoryToken(PlanPreventivo),
           useValue: mockPlanRepo,
         },
+        {
+          provide: getRepositoryToken(Vehiculo),
+          useValue: mockVehiculoRepo,
+        },
       ],
     }).compile();
 
     service = module.get<PreventivePlansService>(PreventivePlansService);
     planRepo = module.get<Repository<PlanPreventivo>>(
       getRepositoryToken(PlanPreventivo),
+    );
+    vehiculoRepo = module.get<Repository<Vehiculo>>(
+      getRepositoryToken(Vehiculo),
     );
 
     jest.clearAllMocks();
@@ -152,6 +201,118 @@ describe("PreventivePlansService", () => {
 
       expect(result?.tipo_intervalo).toBe(TipoIntervalo.Tiempo);
       expect(result?.proxima_fecha).toBeDefined();
+    });
+  });
+
+  describe("create", () => {
+    const createDto: CreatePlanPreventivoDto = {
+      vehiculo_id: 1,
+      tipo_mantenimiento: "Mantenimiento General",
+      tipo_intervalo: TipoIntervalo.KM,
+      intervalo: 10000,
+      descripcion: "Cambio de aceite y filtros",
+      activo: true,
+    };
+
+    it("should create a plan with auto-calculated next mileage", async () => {
+      mockVehiculoRepo.findOne.mockResolvedValue(mockVehiculo);
+      mockPlanRepo.findOne.mockResolvedValue(null);
+      mockPlanRepo.create.mockReturnValue(mockPlanPreventivo);
+      mockPlanRepo.save.mockResolvedValue(mockPlanPreventivo);
+
+      const result = await service.create(createDto);
+
+      expect(result).toEqual(mockPlanPreventivo);
+      expect(mockVehiculoRepo.findOne).toHaveBeenCalled();
+      expect(mockPlanRepo.save).toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException when vehicle does not exist", async () => {
+      mockVehiculoRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("should throw BadRequestException when vehicle already has a plan", async () => {
+      mockVehiculoRepo.findOne.mockResolvedValue(mockVehiculo);
+      mockPlanRepo.findOne.mockResolvedValue(mockPlanPreventivo);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe("update", () => {
+    const updateDto: UpdatePlanPreventivoDto = {
+      descripcion: "Descripción actualizada",
+    };
+
+    it("should update a plan successfully", async () => {
+      const updatedPlan = { ...mockPlanPreventivo, ...updateDto };
+      mockPlanRepo.findOne
+        .mockResolvedValueOnce(mockPlanPreventivo)
+        .mockResolvedValueOnce(updatedPlan);
+      mockPlanRepo.save.mockResolvedValue(updatedPlan);
+
+      const result = await service.update(1, updateDto);
+
+      expect(mockPlanRepo.save).toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
+
+    it("should throw NotFoundException when plan does not exist", async () => {
+      mockPlanRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.update(999, updateDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("remove", () => {
+    it("should deactivate a plan (soft delete)", async () => {
+      mockPlanRepo.findOne.mockResolvedValue(mockPlanPreventivo);
+      mockPlanRepo.save.mockResolvedValue({
+        ...mockPlanPreventivo,
+        activo: false,
+      });
+
+      await service.remove(1);
+
+      expect(mockPlanRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ activo: false }),
+      );
+    });
+
+    it("should throw NotFoundException when plan does not exist", async () => {
+      mockPlanRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("findByVehiculo", () => {
+    it("should return active plan for a vehicle", async () => {
+      mockPlanRepo.findOne.mockResolvedValue(mockPlanPreventivo);
+
+      const result = await service.findByVehiculo(1);
+
+      expect(result).toEqual(mockPlanPreventivo);
+      expect(mockPlanRepo.findOne).toHaveBeenCalledWith({
+        where: { vehiculo: { id: 1 }, activo: true },
+        relations: ["vehiculo"],
+      });
+    });
+
+    it("should return null when vehicle has no active plan", async () => {
+      mockPlanRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.findByVehiculo(999);
+
+      expect(result).toBeNull();
     });
   });
 });
