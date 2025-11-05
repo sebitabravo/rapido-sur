@@ -13,7 +13,7 @@
 #
 # PUERTOS:
 # - Backend:  http://localhost:3000
-# - Frontend: http://localhost:5173
+# - Frontend: http://localhost:8080
 # - pgAdmin:  http://localhost:5050
 # - PostgreSQL: localhost:5432
 # ================================
@@ -73,7 +73,7 @@ services:
       JWT_EXPIRATION: 24h
 
       # CORS
-      FRONTEND_URL: http://localhost:5173
+      FRONTEND_URL: http://localhost:8080
 
       # Email (development - disabled)
       MAIL_HOST: smtp.gmail.com
@@ -106,24 +106,20 @@ services:
       start_period: 40s
 
   # ================================
-  # Frontend (React + Vite)
+  # Frontend (Next.js)
   # NOTA: Descomenta cuando desarrolles el frontend
   # ================================
   # frontend:
   #   build:
   #     context: ./frontend
   #     dockerfile: Dockerfile
-  #     target: development
+  #     target: production
   #   container_name: rapido-sur-frontend
   #   restart: always
   #   ports:
-  #     - '5173:5173'
+  #     - '8080:3000'
   #   environment:
-  #     VITE_API_URL: http://localhost:3000
-  #   volumes:
-  #     # Hot reload for development
-  #     - ./frontend/src:/app/src:ro
-  #     - ./frontend/public:/app/public:ro
+  #     NEXT_PUBLIC_API_URL: http://localhost:3000/api
   #   networks:
   #     - rapido-sur-network
   #   depends_on:

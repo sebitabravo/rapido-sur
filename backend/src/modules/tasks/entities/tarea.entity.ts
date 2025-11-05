@@ -102,7 +102,7 @@ export class Tarea {
     nullable: true,
   })
   @JoinColumn({ name: "mecanico_id" })
-  mecanico_asignado: Usuario;
+  mecanico_asignado: Usuario | null;
 
   /**
    * Parts used in this task

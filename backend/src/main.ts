@@ -13,6 +13,9 @@ async function bootstrap() {
     logger: ["error", "warn", "log", "debug", "verbose"],
   });
 
+  // Set global prefix for all routes
+  app.setGlobalPrefix('api');
+
   // Security headers with Helmet
   app.use(
     helmet({
@@ -34,7 +37,7 @@ async function bootstrap() {
 
   // Enable CORS for frontend communication
   app.enableCors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:8080",
     credentials: true,
   });
 

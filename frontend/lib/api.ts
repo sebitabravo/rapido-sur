@@ -3,7 +3,8 @@ import { authService } from "./auth"
 import { toast } from "sonner"
 
 // Base URL from environment variable or default
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+// Frontend runs on :8080, but API (backend) runs on :3000
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 
 // Create axios instance
 export const apiClient = axios.create({
