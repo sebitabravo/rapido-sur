@@ -59,8 +59,8 @@ export default function ReportsPage() {
     try {
       setLoading(true)
       const response = await api.reports.unavailability({
-        fechaInicio: startDate,
-        fechaFin: endDate,
+        fecha_inicio: startDate,
+        fecha_fin: endDate,
       })
       setUnavailabilityData(response.data || [])
     } catch (error) {
@@ -75,8 +75,8 @@ export default function ReportsPage() {
     try {
       setLoading(true)
       const response = await api.reports.costs({
-        fechaInicio: startDate,
-        fechaFin: endDate,
+        fecha_inicio: startDate,
+        fecha_fin: endDate,
       })
       setCostData(response.data || [])
     } catch (error) {

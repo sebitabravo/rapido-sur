@@ -90,7 +90,7 @@ apiClient.interceptors.response.use(
 export const api = {
   // Authentication
   auth: {
-    login: (data: { username: string; password: string }) => apiClient.post("/auth/login", data),
+    login: (email: string, password: string) => apiClient.post("/auth/login", { email, password }),
     register: (data: { username: string; email: string; password: string; nombre: string }) =>
       apiClient.post("/auth/register", data),
   },
@@ -99,11 +99,11 @@ export const api = {
   vehicles: {
     getAll: (params?: {
       page?: number
-      size?: number
+      limit?: number
       search?: string
       estado?: string
-      tipo?: string
-      sort?: string
+      marca?: string
+      patente?: string
     }) => apiClient.get("/vehiculos", { params }),
     getById: (id: number) => apiClient.get(`/vehiculos/${id}`),
     create: (data: any) => apiClient.post("/vehiculos", data),
@@ -114,14 +114,12 @@ export const api = {
   // Work Orders
   workOrders: {
     getAll: (params?: {
-      page?: number
-      size?: number
+      vehiculo_id?: number
       estado?: string
-      prioridad?: string
       tipo?: string
-      search?: string
-      sort?: string
-      vehiculoId?: string
+      fecha_inicio?: string
+      fecha_fin?: string
+      mecanico_id?: number
     }) => apiClient.get("/ordenes-trabajo", { params }),
     getById: (id: number) => apiClient.get(`/ordenes-trabajo/${id}`),
     create: (data: any) => apiClient.post("/ordenes-trabajo", data),
@@ -131,16 +129,18 @@ export const api = {
 
   // Alerts
   alerts: {
-    getAll: (params?: { activa?: boolean; vehiculoId?: string }) => apiClient.get("/alertas", { params }),
-    getById: (id: number) => apiClient.get(`/alertas/${id}`),
-    dismiss: (id: number) => apiClient.patch(`/alertas/${id}/desactivar`),
+    getAll: () => apiClient.get("/alertas"),
+    getPendientes: () => apiClient.get("/alertas/pendientes"),
+    getByVehiculo: (vehiculoId: number) => apiClient.get(`/alertas/vehiculo/${vehiculoId}`),
+    // TODO: Backend endpoint not implemented yet
+    // dismiss: (id: number) => apiClient.patch(`/alertas/${id}/descartar`),
   },
 
   // Reports
   reports: {
-    unavailability: (params: { fechaInicio: string; fechaFin: string }) =>
+    unavailability: (params: { fecha_inicio: string; fecha_fin: string }) =>
       apiClient.get("/reportes/indisponibilidad", { params }),
-    costs: (params: { fechaInicio: string; fechaFin: string }) => apiClient.get("/reportes/costos", { params }),
+    costs: (params: { fecha_inicio: string; fecha_fin: string }) => apiClient.get("/reportes/costos", { params }),
   },
 
   // Users (Admin only)

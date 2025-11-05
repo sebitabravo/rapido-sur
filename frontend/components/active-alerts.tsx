@@ -31,8 +31,10 @@ export function ActiveAlerts() {
 
   const loadAlerts = async () => {
     try {
-      const response = await api.alerts.getAll({ activa: true })
-      setAlerts((response.data.content || []).slice(0, 5))
+      const response = await api.alerts.getAll()
+      const allAlerts = response.data || []
+      const activeAlerts = allAlerts.filter((alert: any) => alert.activa === true)
+      setAlerts(activeAlerts.slice(0, 5))
     } catch (error) {
       console.error("[v0] Error loading alerts:", error)
     } finally {
@@ -41,12 +43,15 @@ export function ActiveAlerts() {
   }
 
   const handleDismiss = async (id: number) => {
-    try {
-      await api.alerts.dismiss(id)
-      setAlerts(alerts.filter((alert) => alert.id !== id))
-    } catch (error) {
-      console.error("[v0] Error dismissing alert:", error)
-    }
+    // TODO: Backend endpoint not implemented yet. Need to create PATCH /alertas/:id/descartar
+    console.warn("Backend endpoint /alertas/:id/descartar not implemented")
+
+    // try {
+    //   await api.alerts.dismiss(id)
+    //   setAlerts(alerts.filter((alert) => alert.id !== id))
+    // } catch (error) {
+    //   console.error("[v0] Error dismissing alert:", error)
+    // }
   }
 
   const getPriorityColor = (prioridad: string) => {

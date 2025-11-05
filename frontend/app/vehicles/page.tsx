@@ -44,7 +44,6 @@ export default function VehiclesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [estadoFilter, setEstadoFilter] = useState<string>("all")
-  const [tipoFilter, setTipoFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(0)
@@ -64,15 +63,14 @@ export default function VehiclesPage() {
       return
     }
     loadVehicles()
-  }, [router, debouncedSearchTerm, estadoFilter, tipoFilter, currentPage, pageSize, sortBy, sortOrder])
+  }, [router, debouncedSearchTerm, estadoFilter, currentPage, pageSize, sortBy, sortOrder])
 
   const loadVehicles = async () => {
     try {
       setLoading(true)
       const params: any = {
-        page: currentPage,
-        size: pageSize,
-        sort: `${sortBy},${sortOrder}`,
+        page: currentPage + 1,
+        limit: pageSize,
       }
 
       if (debouncedSearchTerm) {
@@ -83,16 +81,12 @@ export default function VehiclesPage() {
         params.estado = estadoFilter
       }
 
-      if (tipoFilter !== "all") {
-        params.tipo = tipoFilter
-      }
-
       const response = await api.vehicles.getAll(params)
-      const data: PaginatedResponse = response.data
+      const data = response.data
 
-      setVehicles(data.content || [])
-      setTotalPages(data.totalPages || 0)
-      setTotalItems(data.totalElements || 0)
+      setVehicles(data.items || [])
+      setTotalPages(data.lastPage || 0)
+      setTotalItems(data.total || 0)
     } catch (error) {
       console.error("[v0] Error loading vehicles:", error)
       toast.error("Error al cargar los vehículos")
@@ -218,19 +212,6 @@ export default function VehiclesPage() {
                   <SelectItem value="FUERA_DE_SERVICIO">Fuera de Servicio</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select value={tipoFilter} onValueChange={setTipoFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los tipos</SelectItem>
-                  <SelectItem value="CAMION">Camión</SelectItem>
-                  <SelectItem value="CAMIONETA">Camioneta</SelectItem>
-                  <SelectItem value="AUTO">Auto</SelectItem>
-                  <SelectItem value="FURGON">Furgón</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardHeader>
           <CardContent>
@@ -240,11 +221,11 @@ export default function VehiclesPage() {
               <div className="text-center py-12">
                 <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-sm text-muted-foreground">
-                  {searchTerm || estadoFilter !== "all" || tipoFilter !== "all"
+                  {searchTerm || estadoFilter !== "all"
                     ? "No se encontraron vehículos con los filtros aplicados"
                     : "No hay vehículos registrados"}
                 </p>
-                {!searchTerm && estadoFilter === "all" && tipoFilter === "all" && (
+                {!searchTerm && estadoFilter === "all" && (
                   <Button onClick={handleAdd} className="mt-4">
                     <Plus className="h-4 w-4" />
                     Agregar Primer Vehículo
@@ -270,19 +251,18 @@ export default function VehiclesPage() {
                       </TableHead>
                       <TableHead>Modelo</TableHead>
                       <TableHead>
-                        <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => handleSort("anio")}>
+                        <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => handleSort("anno")}>
                           Año
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
-                      <TableHead>Tipo</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="-ml-3 h-8"
-                          onClick={() => handleSort("kilometraje")}
+                          onClick={() => handleSort("kilometraje_actual")}
                         >
                           Kilometraje
                           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -297,10 +277,9 @@ export default function VehiclesPage() {
                         <TableCell className="font-medium">{vehicle.patente}</TableCell>
                         <TableCell>{vehicle.marca}</TableCell>
                         <TableCell>{vehicle.modelo}</TableCell>
-                        <TableCell>{vehicle.anio}</TableCell>
-                        <TableCell>{vehicle.tipo.replace("_", " ")}</TableCell>
+                        <TableCell>{vehicle.anno}</TableCell>
                         <TableCell>{getStatusBadge(vehicle.estado)}</TableCell>
-                        <TableCell>{vehicle.kilometraje.toLocaleString()} km</TableCell>
+                        <TableCell>{vehicle.kilometraje_actual?.toLocaleString() || 0} km</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(vehicle)}>

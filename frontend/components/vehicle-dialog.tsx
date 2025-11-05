@@ -16,21 +16,31 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 const vehicleSchema = z.object({
-  patente: z.string().min(1, "La patente es requerida"),
+  patente: z
+    .string()
+    .min(1, "La patente es requerida")
+    .regex(
+      /^([A-Z]{2}-[A-Z]{2}-\d{2}|[A-Z]{4}-\d{2})$/i,
+      "Formato de patente chilena inválido. Use formato AA-BB-12 o ABCD-12"
+    )
+    .transform((val) => val.toUpperCase()),
   marca: z.string().min(1, "La marca es requerida"),
   modelo: z.string().min(1, "El modelo es requerido"),
-  anio: z
-    .number()
+  anno: z
+    .number({ invalid_type_error: "El año debe ser un número" })
+    .int("El año debe ser un número entero")
     .min(1900, "Año inválido")
     .max(new Date().getFullYear() + 1, "Año inválido"),
-  tipo: z.enum(["CAMION", "CAMIONETA", "AUTO", "FURGON"]),
-  estado: z.enum(["OPERATIVO", "EN_MANTENIMIENTO", "FUERA_DE_SERVICIO"]),
-  kilometraje: z.number().min(0, "El kilometraje debe ser positivo"),
+  kilometraje_actual: z
+    .number({ invalid_type_error: "El kilometraje debe ser un número" })
+    .int("El kilometraje debe ser un número entero")
+    .min(0, "El kilometraje debe ser positivo")
+    .optional()
+    .or(z.literal(0)),
 })
 
 type VehicleFormData = z.infer<typeof vehicleSchema>
@@ -51,44 +61,33 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
-    watch,
   } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
       patente: "",
       marca: "",
       modelo: "",
-      anio: new Date().getFullYear(),
-      tipo: "CAMION",
-      estado: "OPERATIVO",
-      kilometraje: 0,
+      anno: new Date().getFullYear(),
+      kilometraje_actual: 0,
     },
   })
-
-  const tipo = watch("tipo")
-  const estado = watch("estado")
 
   useEffect(() => {
     if (vehicle) {
       reset({
-        patente: vehicle.patente,
-        marca: vehicle.marca,
-        modelo: vehicle.modelo,
-        anio: vehicle.anio,
-        tipo: vehicle.tipo,
-        estado: vehicle.estado,
-        kilometraje: vehicle.kilometraje,
+        patente: vehicle.patente || "",
+        marca: vehicle.marca || "",
+        modelo: vehicle.modelo || "",
+        anno: Number(vehicle.anno) || new Date().getFullYear(),
+        kilometraje_actual: Number(vehicle.kilometraje_actual) || 0,
       })
     } else {
       reset({
         patente: "",
         marca: "",
         modelo: "",
-        anio: new Date().getFullYear(),
-        tipo: "CAMION",
-        estado: "OPERATIVO",
-        kilometraje: 0,
+        anno: new Date().getFullYear(),
+        kilometraje_actual: 0,
       })
     }
   }, [vehicle, reset])
@@ -96,6 +95,17 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
   const onSubmit = async (data: VehicleFormData) => {
     try {
       setLoading(true)
+
+      // Debug: Log the data being sent
+      console.log("📤 Sending vehicle data:", data)
+      console.log("📋 Data types:", {
+        patente: typeof data.patente,
+        marca: typeof data.marca,
+        modelo: typeof data.modelo,
+        anno: typeof data.anno,
+        kilometraje_actual: typeof data.kilometraje_actual,
+      })
+
       if (isEdit) {
         await api.vehicles.update(vehicle.id, data)
         toast.success("Vehículo actualizado correctamente")
@@ -106,6 +116,8 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
       onSave()
     } catch (error: any) {
       console.error("[v0] Error saving vehicle:", error)
+      console.error("📥 Backend response:", error.response?.data)
+      console.error("📥 Status code:", error.response?.status)
       toast.error(error.response?.data?.message || "Error al guardar el vehículo")
     } finally {
       setLoading(false)
@@ -128,7 +140,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
               <Label htmlFor="patente">Patente *</Label>
               <Input
                 id="patente"
-                placeholder="ABC123"
+                placeholder="AB-CD-12 o ABCD-12"
                 {...register("patente")}
                 aria-invalid={!!errors.patente}
                 disabled={loading}
@@ -160,61 +172,35 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
               {errors.modelo && <p className="text-xs text-destructive">{errors.modelo.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="anio">Año *</Label>
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="anno">Año *</Label>
               <Input
-                id="anio"
+                id="anno"
                 type="number"
                 placeholder="2024"
-                {...register("anio", { valueAsNumber: true })}
-                aria-invalid={!!errors.anio}
+                min="1900"
+                max={new Date().getFullYear() + 1}
+                step="1"
+                {...register("anno", { valueAsNumber: true })}
+                aria-invalid={!!errors.anno}
                 disabled={loading}
               />
-              {errors.anio && <p className="text-xs text-destructive">{errors.anio.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tipo">Tipo *</Label>
-              <Select value={tipo} onValueChange={(value) => setValue("tipo", value as any)} disabled={loading}>
-                <SelectTrigger id="tipo" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CAMION">Camión</SelectItem>
-                  <SelectItem value="CAMIONETA">Camioneta</SelectItem>
-                  <SelectItem value="AUTO">Auto</SelectItem>
-                  <SelectItem value="FURGON">Furgón</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.tipo && <p className="text-xs text-destructive">{errors.tipo.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado *</Label>
-              <Select value={estado} onValueChange={(value) => setValue("estado", value as any)} disabled={loading}>
-                <SelectTrigger id="estado" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OPERATIVO">Operativo</SelectItem>
-                  <SelectItem value="EN_MANTENIMIENTO">En Mantenimiento</SelectItem>
-                  <SelectItem value="FUERA_DE_SERVICIO">Fuera de Servicio</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.estado && <p className="text-xs text-destructive">{errors.estado.message}</p>}
+              {errors.anno && <p className="text-xs text-destructive">{errors.anno.message}</p>}
             </div>
 
             <div className="space-y-2 col-span-2">
-              <Label htmlFor="kilometraje">Kilometraje *</Label>
+              <Label htmlFor="kilometraje_actual">Kilometraje Actual</Label>
               <Input
-                id="kilometraje"
+                id="kilometraje_actual"
                 type="number"
                 placeholder="0"
-                {...register("kilometraje", { valueAsNumber: true })}
-                aria-invalid={!!errors.kilometraje}
+                min="0"
+                step="1"
+                {...register("kilometraje_actual", { valueAsNumber: true })}
+                aria-invalid={!!errors.kilometraje_actual}
                 disabled={loading}
               />
-              {errors.kilometraje && <p className="text-xs text-destructive">{errors.kilometraje.message}</p>}
+              {errors.kilometraje_actual && <p className="text-xs text-destructive">{errors.kilometraje_actual.message}</p>}
             </div>
           </div>
 

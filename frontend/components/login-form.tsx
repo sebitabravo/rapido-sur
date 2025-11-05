@@ -15,7 +15,7 @@ import { Loader2, AlertCircle } from "lucide-react"
 
 export function LoginForm() {
   const router = useRouter()
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -26,11 +26,15 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      const response = await api.auth.login(username, password)
-      const authData: AuthResponse = response.data
+      const response = await api.auth.login(email, password)
+      const authData = response.data
+
+      // Backend returns {access_token, user}, but our auth service expects {token, user}
+      const token = authData.access_token
+      const user = authData.user
 
       // Save token and user data
-      authService.saveAuth(authData.token, authData.user)
+      authService.saveAuth(token, user)
 
       // Redirect to dashboard
       router.push("/dashboard")
@@ -64,16 +68,16 @@ export function LoginForm() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="username">Usuario</Label>
+            <Label htmlFor="email">Correo Electrónico</Label>
             <Input
-              id="username"
-              type="text"
-              placeholder="Ingrese su usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              placeholder="Ingrese su correo electrónico"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
-              autoComplete="username"
+              autoComplete="email"
             />
           </div>
 

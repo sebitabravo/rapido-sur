@@ -55,15 +55,20 @@ export function useAlerts(options: UseAlertsOptions = {}) {
 
   const dismissAlert = useCallback(
     async (id: number) => {
-      try {
-        await api.alerts.dismiss(id)
-        toast.success("Alerta descartada correctamente")
-        await loadAlerts()
-        return true
-      } catch (err) {
-        toast.error("Error al descartar la alerta")
-        return false
-      }
+      // TODO: Backend endpoint not implemented yet. Need to create PATCH /alertas/:id/descartar
+      toast.error("Función de descartar alertas no disponible aún. El endpoint del backend debe ser implementado.")
+      console.warn("Backend endpoint /alertas/:id/descartar not implemented")
+      return false
+
+      // try {
+      //   await api.alerts.dismiss(id)
+      //   toast.success("Alerta descartada correctamente")
+      //   await loadAlerts()
+      //   return true
+      // } catch (err) {
+      //   toast.error("Error al descartar la alerta")
+      //   return false
+      // }
     },
     [loadAlerts],
   )

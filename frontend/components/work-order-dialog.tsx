@@ -97,8 +97,8 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
 
   const loadVehicles = async () => {
     try {
-      const response = await api.vehicles.getAll({ page: 0, size: 1000 })
-      setVehicles(response.data.content || [])
+      const response = await api.vehicles.getAll({ page: 1, limit: 1000 })
+      setVehicles(response.data.items || [])
     } catch (error) {
       console.error("[v0] Error loading vehicles:", error)
     }

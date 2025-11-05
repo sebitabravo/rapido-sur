@@ -49,9 +49,17 @@ export default function AlertsPage() {
   const loadAlerts = async () => {
     try {
       setLoading(true)
-      const params = filter === "active" ? { activa: true } : filter === "dismissed" ? { activa: false } : {}
-      const response = await api.alerts.getAll(params)
-      setAlerts(response.data.content || [])
+      const response = await api.alerts.getAll()
+      const allAlerts = response.data || []
+
+      let filteredAlerts = allAlerts
+      if (filter === "active") {
+        filteredAlerts = allAlerts.filter((alert: Alert) => alert.activa === true)
+      } else if (filter === "dismissed") {
+        filteredAlerts = allAlerts.filter((alert: Alert) => alert.activa === false)
+      }
+
+      setAlerts(filteredAlerts)
     } catch (error) {
       console.error("[v0] Error loading alerts:", error)
       toast.error("Error al cargar las alertas")
@@ -61,14 +69,18 @@ export default function AlertsPage() {
   }
 
   const handleDismiss = async (id: number) => {
-    try {
-      await api.alerts.dismiss(id)
-      toast.success("Alerta descartada correctamente")
-      loadAlerts()
-    } catch (error) {
-      console.error("[v0] Error dismissing alert:", error)
-      toast.error("Error al descartar la alerta")
-    }
+    // TODO: Backend endpoint not implemented yet. Need to create PATCH /alertas/:id/descartar
+    toast.error("Función de descartar alertas no disponible aún. El endpoint del backend debe ser implementado.")
+    console.warn("Backend endpoint /alertas/:id/descartar not implemented")
+
+    // try {
+    //   await api.alerts.dismiss(id)
+    //   toast.success("Alerta descartada correctamente")
+    //   loadAlerts()
+    // } catch (error) {
+    //   console.error("[v0] Error dismissing alert:", error)
+    //   toast.error("Error al descartar la alerta")
+    // }
   }
 
   const getPriorityColor = (prioridad: string) => {

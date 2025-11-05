@@ -84,22 +84,10 @@ export default function WorkOrdersPage() {
   const loadWorkOrders = async () => {
     try {
       setLoading(true)
-      const params: any = {
-        page: currentPage,
-        size: pageSize,
-        sort: `${sortBy},${sortOrder}`,
-      }
-
-      if (debouncedSearchTerm) {
-        params.search = debouncedSearchTerm
-      }
+      const params: any = {}
 
       if (statusFilter !== "all") {
         params.estado = statusFilter
-      }
-
-      if (prioridadFilter !== "all") {
-        params.prioridad = prioridadFilter
       }
 
       if (tipoFilter !== "all") {
@@ -107,11 +95,43 @@ export default function WorkOrdersPage() {
       }
 
       const response = await api.workOrders.getAll(params)
-      const data: PaginatedResponse = response.data
+      let orders = response.data || []
 
-      setWorkOrders(data.content || [])
-      setTotalPages(data.totalPages || 0)
-      setTotalItems(data.totalElements || 0)
+      // Client-side filtering for search term
+      if (debouncedSearchTerm) {
+        const searchLower = debouncedSearchTerm.toLowerCase()
+        orders = orders.filter((order: WorkOrder) =>
+          order.vehiculo.patente.toLowerCase().includes(searchLower) ||
+          order.descripcion.toLowerCase().includes(searchLower)
+        )
+      }
+
+      // Client-side filtering for priority
+      if (prioridadFilter !== "all") {
+        orders = orders.filter((order: WorkOrder) => order.prioridad === prioridadFilter)
+      }
+
+      // Client-side sorting
+      orders.sort((a: WorkOrder, b: WorkOrder) => {
+        let aVal: any = a[sortBy as keyof WorkOrder]
+        let bVal: any = b[sortBy as keyof WorkOrder]
+
+        if (sortOrder === "asc") {
+          return aVal > bVal ? 1 : -1
+        } else {
+          return aVal < bVal ? 1 : -1
+        }
+      })
+
+      // Client-side pagination
+      const totalOrders = orders.length
+      const startIndex = currentPage * pageSize
+      const endIndex = startIndex + pageSize
+      const paginatedOrders = orders.slice(startIndex, endIndex)
+
+      setWorkOrders(paginatedOrders)
+      setTotalPages(Math.ceil(totalOrders / pageSize))
+      setTotalItems(totalOrders)
     } catch (error) {
       console.error("[v0] Error loading work orders:", error)
       toast.error("Error al cargar las órdenes de trabajo")

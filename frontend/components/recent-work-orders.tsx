@@ -33,8 +33,9 @@ export function RecentWorkOrders() {
 
   const loadWorkOrders = async () => {
     try {
-      const response = await api.workOrders.getAll({ page: 0, size: 5 })
-      setWorkOrders(response.data.content || [])
+      const response = await api.workOrders.getAll()
+      const allOrders = response.data || []
+      setWorkOrders(allOrders.slice(0, 5))
     } catch (error) {
       console.error("[v0] Error loading work orders:", error)
     } finally {

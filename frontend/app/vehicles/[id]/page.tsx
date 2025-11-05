@@ -71,13 +71,16 @@ export default function VehicleDetailPage() {
 
       const [vehicleRes, ordersRes, alertsRes] = await Promise.all([
         api.vehicles.getById(Number(vehicleId)),
-        api.workOrders.getAll({ vehiculoId: vehicleId, size: 100 }),
-        api.alerts.getAll({ vehiculoId: vehicleId }),
+        api.workOrders.getAll({ vehiculo_id: Number(vehicleId) }),
+        api.alerts.getAll(),
       ])
 
       setVehicle(vehicleRes.data)
-      setWorkOrders(ordersRes.data.content || [])
-      setAlerts(alertsRes.data.content || [])
+      setWorkOrders(ordersRes.data || [])
+
+      const allAlerts = alertsRes.data || []
+      const vehicleAlerts = allAlerts.filter((alert: any) => alert.vehiculo?.id === Number(vehicleId))
+      setAlerts(vehicleAlerts)
     } catch (error) {
       console.error("[v0] Error loading vehicle data:", error)
       toast.error("Error al cargar los datos del vehículo")

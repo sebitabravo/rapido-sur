@@ -31,25 +31,27 @@ export function DashboardStats() {
     try {
       // Fetch data from multiple endpoints in parallel
       const [vehiclesRes, workOrdersRes, alertsRes] = await Promise.all([
-        api.vehicles.getAll({ page: 0, size: 1000 }),
-        api.workOrders.getAll({ page: 0, size: 1000 }),
-        api.alerts.getAll({ activa: true }),
+        api.vehicles.getAll({ page: 1, limit: 1000 }),
+        api.workOrders.getAll(),
+        api.alerts.getAll(),
       ])
 
-      const vehicles = vehiclesRes.data.content || []
-      const workOrders = workOrdersRes.data.content || []
-      const alerts = alertsRes.data.content || []
+      // Backend returns paginated data for vehicles with 'items' property
+      const vehicles = vehiclesRes.data.items || []
+      // Work orders and alerts return arrays directly
+      const workOrders = workOrdersRes.data || []
+      const alerts = alertsRes.data || []
 
       // Calculate statistics
       const statsData: Stats = {
         totalVehicles: vehicles.length,
-        activeVehicles: vehicles.filter((v: any) => v.estado === "OPERATIVO").length,
-        inMaintenanceVehicles: vehicles.filter((v: any) => v.estado === "EN_MANTENIMIENTO").length,
+        activeVehicles: vehicles.filter((v: any) => v.estado === "Activo").length,
+        inMaintenanceVehicles: vehicles.filter((v: any) => v.estado === "EnMantenimiento").length,
         totalWorkOrders: workOrders.length,
-        pendingWorkOrders: workOrders.filter((wo: any) => wo.estado === "PENDIENTE").length,
-        completedWorkOrders: workOrders.filter((wo: any) => wo.estado === "COMPLETADA").length,
+        pendingWorkOrders: workOrders.filter((wo: any) => wo.estado === "Pendiente").length,
+        completedWorkOrders: workOrders.filter((wo: any) => wo.estado === "Finalizada").length,
         activeAlerts: alerts.length,
-        criticalAlerts: alerts.filter((a: any) => a.prioridad === "ALTA").length,
+        criticalAlerts: alerts.filter((a: any) => a.tipo_alerta === "Kilometraje").length,
       }
 
       setStats(statsData)
