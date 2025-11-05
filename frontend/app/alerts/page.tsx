@@ -11,8 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
 import { AlertTriangle, ArrowLeft, X, CheckCircle, Bell, BellOff } from "lucide-react"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDate } from "@/lib/utils"
 
 interface Alert {
   id: number
@@ -237,7 +236,7 @@ export default function AlertsPage() {
                       )}
 
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(alert.fechaCreacion), "dd MMM yyyy HH:mm", { locale: es })}
+                        {formatDate(alert.fechaCreacion, "dd MMM yyyy HH:mm")}
                       </p>
                     </div>
 

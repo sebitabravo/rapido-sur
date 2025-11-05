@@ -142,8 +142,8 @@ export function MultiStepWorkOrderForm({ onSubmit, onCancel, vehicles }: MultiSt
                     <SelectValue placeholder="Seleccione el tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PREVENTIVO">Preventivo</SelectItem>
-                    <SelectItem value="CORRECTIVO">Correctivo</SelectItem>
+                    <SelectItem value="Preventivo">Preventivo</SelectItem>
+                    <SelectItem value="Correctivo">Correctivo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

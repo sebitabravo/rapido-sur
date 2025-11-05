@@ -7,8 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertTriangle, X } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDate } from "@/lib/utils"
 
 interface Alert {
   id: number
@@ -111,7 +110,7 @@ export function ActiveAlerts() {
                   <p className="text-sm font-medium">{alert.tipo.replace("_", " ")}</p>
                   <p className="text-xs text-muted-foreground mt-1">{alert.mensaje}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(alert.fechaCreacion), "dd MMM yyyy HH:mm", { locale: es })}
+                    {formatDate(alert.fechaCreacion, "dd MMM yyyy HH:mm")}
                   </p>
                 </div>
                 <Button variant="ghost" size="icon-sm" onClick={() => handleDismiss(alert.id)} title="Descartar">

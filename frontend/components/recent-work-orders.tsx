@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDate } from "@/lib/utils"
 
 interface WorkOrder {
   id: number
@@ -45,12 +44,18 @@ export function RecentWorkOrders() {
 
   const getStatusBadge = (estado: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      PENDIENTE: "outline",
-      EN_PROGRESO: "default",
-      COMPLETADA: "secondary",
-      CANCELADA: "destructive",
+      Pendiente: "outline",
+      Asignada: "default",
+      EnProgreso: "default",
+      Finalizada: "secondary",
     }
-    return <Badge variant={variants[estado] || "outline"}>{estado.replace("_", " ")}</Badge>
+    const labels: Record<string, string> = {
+      Pendiente: "Pendiente",
+      Asignada: "Asignada",
+      EnProgreso: "En Progreso",
+      Finalizada: "Finalizada",
+    }
+    return <Badge variant={variants[estado] || "outline"}>{labels[estado] || estado}</Badge>
   }
 
   const getPriorityBadge = (prioridad: string) => {
@@ -111,11 +116,11 @@ export function RecentWorkOrders() {
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell>{order.tipo.replace("_", " ")}</TableCell>
+                  <TableCell>{order.tipo === "Preventivo" ? "Preventivo" : "Correctivo"}</TableCell>
                   <TableCell>{getStatusBadge(order.estado)}</TableCell>
                   <TableCell>{getPriorityBadge(order.prioridad)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(order.fechaCreacion), "dd MMM yyyy", { locale: es })}
+                    {formatDate(order.fechaCreacion, "dd MMM yyyy")}
                   </TableCell>
                 </TableRow>
               ))}

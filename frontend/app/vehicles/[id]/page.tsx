@@ -12,8 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { PreventivePlanDialog } from "@/components/preventive-plan-dialog"
 import { ArrowLeft, Truck, Wrench, AlertTriangle, TrendingUp, Calendar, Plus, Edit } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDate } from "@/lib/utils"
 import { toast } from "sonner"
 
 interface Vehicle {
@@ -155,7 +154,7 @@ export default function VehicleDetailPage() {
   }
 
   const totalCost = workOrders.reduce((sum, order) => sum + (order.costoReal || 0), 0)
-  const completedOrders = workOrders.filter((o) => o.estado === "COMPLETADA").length
+  const completedOrders = workOrders.filter((o) => o.estado === "Finalizada").length
   const activeAlerts = alerts.filter((a) => a.activa).length
 
   return (
@@ -251,9 +250,7 @@ export default function VehicleDetailPage() {
               {vehicle.ultimoMantenimiento && (
                 <div>
                   <p className="text-sm text-muted-foreground">Último Mantenimiento</p>
-                  <p className="font-medium">
-                    {format(new Date(vehicle.ultimoMantenimiento), "dd/MM/yyyy", { locale: es })}
-                  </p>
+                  <p className="font-medium">{formatDate(vehicle.ultimoMantenimiento)}</p>
                 </div>
               )}
             </div>
@@ -310,9 +307,7 @@ export default function VehicleDetailPage() {
                 {preventivePlan.tipo_intervalo === "Tiempo" && preventivePlan.proxima_fecha && (
                   <div>
                     <p className="text-sm text-muted-foreground">Próxima Fecha</p>
-                    <p className="font-medium">
-                      {format(new Date(preventivePlan.proxima_fecha), "dd/MM/yyyy", { locale: es })}
-                    </p>
+                    <p className="font-medium">{formatDate(preventivePlan.proxima_fecha)}</p>
                   </div>
                 )}
                 <div className="md:col-span-2">
@@ -395,7 +390,7 @@ export default function VehicleDetailPage() {
                               {order.prioridad}
                             </Badge>
                           </TableCell>
-                          <TableCell>{format(new Date(order.fechaCreacion), "dd/MM/yyyy", { locale: es })}</TableCell>
+                          <TableCell>{formatDate(order.fechaCreacion)}</TableCell>
                           <TableCell>${(order.costoReal || 0).toLocaleString()}</TableCell>
                         </TableRow>
                       ))}
@@ -435,7 +430,7 @@ export default function VehicleDetailPage() {
                           </div>
                           <p className="text-sm font-medium">{alert.mensaje}</p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(alert.fechaCreacion), "dd MMM yyyy HH:mm", { locale: es })}
+                            {formatDate(alert.fechaCreacion, "dd MMM yyyy HH:mm")}
                           </p>
                         </div>
                       </div>
@@ -484,20 +479,20 @@ export default function VehicleDetailPage() {
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Mantenimiento Preventivo</p>
-                      <p className="text-2xl font-bold">{workOrders.filter((o) => o.tipo === "PREVENTIVO").length}</p>
+                      <p className="text-2xl font-bold">{workOrders.filter((o) => o.tipo === "Preventivo").length}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Mantenimiento Correctivo</p>
-                      <p className="text-2xl font-bold">{workOrders.filter((o) => o.tipo === "CORRECTIVO").length}</p>
+                      <p className="text-2xl font-bold">{workOrders.filter((o) => o.tipo === "Correctivo").length}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Órdenes Pendientes</p>
-                      <p className="text-2xl font-bold">{workOrders.filter((o) => o.estado === "PENDIENTE").length}</p>
+                      <p className="text-2xl font-bold">{workOrders.filter((o) => o.estado === "Pendiente").length}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Órdenes en Progreso</p>
                       <p className="text-2xl font-bold">
-                        {workOrders.filter((o) => o.estado === "EN_PROGRESO").length}
+                        {workOrders.filter((o) => o.estado === "EnProgreso" || o.estado === "Asignada").length}
                       </p>
                     </div>
                   </div>

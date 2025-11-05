@@ -17,8 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Calendar, Truck, User, DollarSign, Clock } from "lucide-react"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDate } from "@/lib/utils"
 
 interface WorkOrderDetailDialogProps {
   open: boolean
@@ -52,12 +51,18 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
 
   const getStatusBadge = (estado: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      PENDIENTE: "outline",
-      EN_PROGRESO: "default",
-      COMPLETADA: "secondary",
-      CANCELADA: "destructive",
+      Pendiente: "outline",
+      Asignada: "default",
+      EnProgreso: "default",
+      Finalizada: "secondary",
     }
-    return <Badge variant={variants[estado] || "outline"}>{estado.replace("_", " ")}</Badge>
+    const labels: Record<string, string> = {
+      Pendiente: "Pendiente",
+      Asignada: "Asignada",
+      EnProgreso: "En Progreso",
+      Finalizada: "Finalizada",
+    }
+    return <Badge variant={variants[estado] || "outline"}>{labels[estado] || estado}</Badge>
   }
 
   const getPriorityBadge = (prioridad: string) => {
@@ -90,7 +95,7 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Tipo</p>
-              <Badge variant="outline">{workOrder.tipo.replace("_", " ")}</Badge>
+              <Badge variant="outline">{workOrder.tipo === "Preventivo" ? "Preventivo" : "Correctivo"}</Badge>
             </div>
           </div>
 
@@ -113,9 +118,7 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
               <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm text-muted-foreground">Fecha Creación</p>
-                <p className="font-medium">
-                  {format(new Date(workOrder.fechaCreacion), "dd/MM/yyyy HH:mm", { locale: es })}
-                </p>
+                <p className="font-medium">{formatDate(workOrder.fechaCreacion, "dd/MM/yyyy HH:mm")}</p>
               </div>
             </div>
             {workOrder.fechaInicio && (
@@ -123,9 +126,7 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
                 <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm text-muted-foreground">Fecha Inicio</p>
-                  <p className="font-medium">
-                    {format(new Date(workOrder.fechaInicio), "dd/MM/yyyy HH:mm", { locale: es })}
-                  </p>
+                  <p className="font-medium">{formatDate(workOrder.fechaInicio, "dd/MM/yyyy HH:mm")}</p>
                 </div>
               </div>
             )}
@@ -191,10 +192,10 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
                   <SelectValue placeholder="Seleccione un nuevo estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                  <SelectItem value="EN_PROGRESO">En Progreso</SelectItem>
-                  <SelectItem value="COMPLETADA">Completada</SelectItem>
-                  <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  <SelectItem value="Asignada">Asignada</SelectItem>
+                  <SelectItem value="EnProgreso">En Progreso</SelectItem>
+                  <SelectItem value="Finalizada">Finalizada</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={handleStatusUpdate} disabled={!newStatus || updating}>

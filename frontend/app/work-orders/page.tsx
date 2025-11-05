@@ -18,8 +18,7 @@ import { Plus, Search, Wrench, ArrowLeft, Edit, Eye, ArrowUpDown } from "lucide-
 import { WorkOrderDialog } from "@/components/work-order-dialog"
 import { WorkOrderDetailDialog } from "@/components/work-order-detail-dialog"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { formatDate } from "@/lib/utils"
 
 interface WorkOrder {
   id: number
@@ -43,14 +42,6 @@ interface WorkOrder {
     id: number
     nombre: string
   }
-}
-
-interface PaginatedResponse {
-  content: WorkOrder[]
-  totalElements: number
-  totalPages: number
-  size: number
-  number: number
 }
 
 export default function WorkOrdersPage() {
@@ -180,12 +171,18 @@ export default function WorkOrdersPage() {
 
   const getStatusBadge = (estado: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      PENDIENTE: "outline",
-      EN_PROGRESO: "default",
-      COMPLETADA: "secondary",
-      CANCELADA: "destructive",
+      Pendiente: "outline",
+      Asignada: "default",
+      EnProgreso: "default",
+      Finalizada: "secondary",
     }
-    return <Badge variant={variants[estado] || "outline"}>{estado.replace("_", " ")}</Badge>
+    const labels: Record<string, string> = {
+      Pendiente: "Pendiente",
+      Asignada: "Asignada",
+      EnProgreso: "En Progreso",
+      Finalizada: "Finalizada",
+    }
+    return <Badge variant={variants[estado] || "outline"}>{labels[estado] || estado}</Badge>
   }
 
   const getPriorityBadge = (prioridad: string) => {
@@ -197,9 +194,9 @@ export default function WorkOrdersPage() {
     return <Badge variant={variants[prioridad] || "outline"}>{prioridad}</Badge>
   }
 
-  const pendingOrders = workOrders.filter((wo) => wo.estado === "PENDIENTE")
-  const inProgressOrders = workOrders.filter((wo) => wo.estado === "EN_PROGRESO")
-  const completedOrders = workOrders.filter((wo) => wo.estado === "COMPLETADA")
+  const pendingOrders = workOrders.filter((wo) => wo.estado === "Pendiente")
+  const inProgressOrders = workOrders.filter((wo) => wo.estado === "EnProgreso" || wo.estado === "Asignada")
+  const completedOrders = workOrders.filter((wo) => wo.estado === "Finalizada")
 
   return (
     <div className="min-h-screen bg-background">
@@ -267,9 +264,9 @@ export default function WorkOrdersPage() {
               <Tabs value={statusFilter} onValueChange={setStatusFilter}>
                 <TabsList>
                   <TabsTrigger value="all">Todas</TabsTrigger>
-                  <TabsTrigger value="PENDIENTE">Pendientes</TabsTrigger>
-                  <TabsTrigger value="EN_PROGRESO">En Progreso</TabsTrigger>
-                  <TabsTrigger value="COMPLETADA">Completadas</TabsTrigger>
+                  <TabsTrigger value="Pendiente">Pendientes</TabsTrigger>
+                  <TabsTrigger value="EnProgreso">En Progreso</TabsTrigger>
+                  <TabsTrigger value="Finalizada">Completadas</TabsTrigger>
                 </TabsList>
               </Tabs>
 
@@ -302,8 +299,8 @@ export default function WorkOrdersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los tipos</SelectItem>
-                    <SelectItem value="PREVENTIVO">Preventivo</SelectItem>
-                    <SelectItem value="CORRECTIVO">Correctivo</SelectItem>
+                    <SelectItem value="Preventivo">Preventivo</SelectItem>
+                    <SelectItem value="Correctivo">Correctivo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -369,12 +366,10 @@ export default function WorkOrdersPage() {
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>{order.tipo.replace("_", " ")}</TableCell>
+                        <TableCell>{order.tipo === "Preventivo" ? "Preventivo" : "Correctivo"}</TableCell>
                         <TableCell>{getStatusBadge(order.estado)}</TableCell>
                         <TableCell>{getPriorityBadge(order.prioridad)}</TableCell>
-                        <TableCell className="text-sm">
-                          {format(new Date(order.fechaCreacion), "dd/MM/yyyy", { locale: es })}
-                        </TableCell>
+                        <TableCell className="text-sm">{formatDate(order.fechaCreacion)}</TableCell>
                         <TableCell className="text-sm">{order.mecanico ? order.mecanico.nombre : "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
