@@ -15,19 +15,19 @@ import {
  */
 export class CreateVehiculoDto {
   @ApiProperty({
-    description: "Patente del vehículo en formato chileno (XX1234 o XXXX12 para patentes nuevas)",
-    example: "ABCD12",
+    description: "Patente del vehículo en formato chileno con guiones (XX-XX-12 o XXXX-12)",
+    example: "ABCD-12",
     type: String,
-    minLength: 6,
+    minLength: 7,
     maxLength: 10,
-    pattern: "^[A-Z]{2}[0-9]{4}$|^[A-Z]{4}[0-9]{2}$",
+    pattern: "^([A-Z]{2}-[A-Z]{2}-[0-9]{2}|[A-Z]{4}-[0-9]{2})$",
   })
   @IsNotEmpty({ message: "La patente es obligatoria" })
   @IsString()
-  @Length(6, 10, { message: "La patente debe tener entre 6 y 10 caracteres" })
-  @Matches(/^[A-Z]{2}[0-9]{4}$|^[A-Z]{4}[0-9]{2}$/, {
+  @Length(7, 10, { message: "La patente debe tener entre 7 y 10 caracteres" })
+  @Matches(/^([A-Z]{2}-[A-Z]{2}-[0-9]{2}|[A-Z]{4}-[0-9]{2})$/i, {
     message:
-      "La patente debe ser formato chileno válido (XX1234 o XXXX12 para patentes nuevas)",
+      "La patente debe ser formato chileno válido con guiones (XX-XX-12 o XXXX-12)",
   })
   patente: string;
 

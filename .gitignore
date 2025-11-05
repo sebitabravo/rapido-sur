@@ -65,3 +65,17 @@ coverage/
 # Production
 /backend/dist
 /frontend/dist
+
+# Next.js
+.next/
+next-env.d.ts
+out/
+
+# Temporary files
+backend/temp-*.json
+frontend/temp-*.json
+
+# Personal documentation (optional - uncomment if you don't want to track)
+# ANALISIS-*.md
+# FLUJO-*.md
+# GUIA-*.md
