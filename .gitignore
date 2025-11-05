@@ -76,6 +76,6 @@ backend/temp-*.json
 frontend/temp-*.json
 
 # Personal documentation (optional - uncomment if you don't want to track)
-# ANALISIS-*.md
-# FLUJO-*.md
-# GUIA-*.md
+# Note: All docs are now organized in docs/ folders
+# docs/analysis/*.md  # Uncomment to ignore analysis docs
+# docs/setup/*.md     # Uncomment to ignore setup docs
