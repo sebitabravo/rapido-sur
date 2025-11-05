@@ -1,6 +1,10 @@
 import {
   Controller,
   Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
   Param,
   ParseIntPipe,
   UseGuards,
@@ -12,11 +16,14 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiBody,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
 } from "@nestjs/swagger";
 import { PreventivePlansService } from "./preventive-plans.service";
 import { PlanPreventivo } from "./entities/plan-preventivo.entity";
+import { CreatePlanPreventivoDto } from "./dto/create-plan-preventivo.dto";
+import { UpdatePlanPreventivoDto } from "./dto/update-plan-preventivo.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";

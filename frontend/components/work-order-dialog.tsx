@@ -22,12 +22,9 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 const workOrderSchema = z.object({
-  vehiculoId: z.number().min(1, "Debe seleccionar un vehículo"),
-  tipo: z.enum(["PREVENTIVO", "CORRECTIVO", "INSPECCION"]),
-  prioridad: z.enum(["ALTA", "MEDIA", "BAJA"]),
+  vehiculo_id: z.number().min(1, "Debe seleccionar un vehículo"),
+  tipo: z.enum(["Preventivo", "Correctivo"]),
   descripcion: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
-  observaciones: z.string().optional(),
-  costoEstimado: z.number().min(0, "El costo debe ser positivo").optional(),
 })
 
 type WorkOrderFormData = z.infer<typeof workOrderSchema>
@@ -54,18 +51,14 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
   } = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: {
-      vehiculoId: 0,
-      tipo: "PREVENTIVO",
-      prioridad: "MEDIA",
+      vehiculo_id: 0,
+      tipo: "Preventivo",
       descripcion: "",
-      observaciones: "",
-      costoEstimado: 0,
     },
   })
 
-  const vehiculoId = watch("vehiculoId")
+  const vehiculo_id = watch("vehiculo_id")
   const tipo = watch("tipo")
-  const prioridad = watch("prioridad")
 
   useEffect(() => {
     if (open) {
@@ -76,21 +69,15 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
   useEffect(() => {
     if (workOrder) {
       reset({
-        vehiculoId: workOrder.vehiculo.id,
+        vehiculo_id: workOrder.vehiculo.id,
         tipo: workOrder.tipo,
-        prioridad: workOrder.prioridad,
         descripcion: workOrder.descripcion,
-        observaciones: workOrder.observaciones || "",
-        costoEstimado: workOrder.costoEstimado || 0,
       })
     } else {
       reset({
-        vehiculoId: 0,
-        tipo: "PREVENTIVO",
-        prioridad: "MEDIA",
+        vehiculo_id: 0,
+        tipo: "Preventivo",
         descripcion: "",
-        observaciones: "",
-        costoEstimado: 0,
       })
     }
   }, [workOrder, reset])
@@ -107,11 +94,18 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
   const onSubmit = async (data: WorkOrderFormData) => {
     try {
       setLoading(true)
+      // Payload matches backend DTO exactly
+      const payload = {
+        vehiculo_id: data.vehiculo_id,
+        tipo: data.tipo,
+        descripcion: data.descripcion,
+      }
+
       if (isEdit) {
-        await api.workOrders.update(workOrder.id, data)
+        await api.workOrders.update(workOrder.id, payload)
         toast.success("Orden de trabajo actualizada correctamente")
       } else {
-        await api.workOrders.create(data)
+        await api.workOrders.create(payload)
         toast.success("Orden de trabajo creada correctamente")
       }
       onSave()
@@ -136,13 +130,13 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
-              <Label htmlFor="vehiculoId">Vehículo *</Label>
+              <Label htmlFor="vehiculo_id">Vehículo *</Label>
               <Select
-                value={vehiculoId.toString()}
-                onValueChange={(value) => setValue("vehiculoId", Number.parseInt(value))}
+                value={vehiculo_id.toString()}
+                onValueChange={(value) => setValue("vehiculo_id", Number.parseInt(value))}
                 disabled={loading || isEdit}
               >
-                <SelectTrigger id="vehiculoId" className="w-full">
+                <SelectTrigger id="vehiculo_id" className="w-full">
                   <SelectValue placeholder="Seleccione un vehículo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -153,7 +147,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
                   ))}
                 </SelectContent>
               </Select>
-              {errors.vehiculoId && <p className="text-xs text-destructive">{errors.vehiculoId.message}</p>}
+              {errors.vehiculo_id && <p className="text-xs text-destructive">{errors.vehiculo_id.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -163,31 +157,11 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PREVENTIVO">Preventivo</SelectItem>
-                  <SelectItem value="CORRECTIVO">Correctivo</SelectItem>
-                  <SelectItem value="INSPECCION">Inspección</SelectItem>
+                  <SelectItem value="Preventivo">Preventivo</SelectItem>
+                  <SelectItem value="Correctivo">Correctivo</SelectItem>
                 </SelectContent>
               </Select>
               {errors.tipo && <p className="text-xs text-destructive">{errors.tipo.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="prioridad">Prioridad *</Label>
-              <Select
-                value={prioridad}
-                onValueChange={(value) => setValue("prioridad", value as any)}
-                disabled={loading}
-              >
-                <SelectTrigger id="prioridad" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALTA">Alta</SelectItem>
-                  <SelectItem value="MEDIA">Media</SelectItem>
-                  <SelectItem value="BAJA">Baja</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.prioridad && <p className="text-xs text-destructive">{errors.prioridad.message}</p>}
             </div>
 
             <div className="space-y-2 col-span-2">
@@ -198,33 +172,9 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
                 {...register("descripcion")}
                 aria-invalid={!!errors.descripcion}
                 disabled={loading}
-                rows={3}
+                rows={4}
               />
               {errors.descripcion && <p className="text-xs text-destructive">{errors.descripcion.message}</p>}
-            </div>
-
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="observaciones">Observaciones</Label>
-              <Textarea
-                id="observaciones"
-                placeholder="Observaciones adicionales..."
-                {...register("observaciones")}
-                disabled={loading}
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="costoEstimado">Costo Estimado</Label>
-              <Input
-                id="costoEstimado"
-                type="number"
-                placeholder="0"
-                {...register("costoEstimado", { valueAsNumber: true })}
-                aria-invalid={!!errors.costoEstimado}
-                disabled={loading}
-              />
-              {errors.costoEstimado && <p className="text-xs text-destructive">{errors.costoEstimado.message}</p>}
             </div>
           </div>
 
