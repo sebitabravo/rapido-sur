@@ -111,6 +111,16 @@ export const api = {
     delete: (id: number) => apiClient.delete(`/vehiculos/${id}`),
   },
 
+  // Preventive Plans
+  preventivePlans: {
+    getAll: () => apiClient.get("/planes-preventivos"),
+    getById: (id: number) => apiClient.get(`/planes-preventivos/${id}`),
+    getByVehicle: (vehiculoId: number) => apiClient.get(`/planes-preventivos/vehiculo/${vehiculoId}`),
+    create: (data: any) => apiClient.post("/planes-preventivos", data),
+    update: (id: number, data: any) => apiClient.patch(`/planes-preventivos/${id}`, data),
+    delete: (id: number) => apiClient.delete(`/planes-preventivos/${id}`),
+  },
+
   // Work Orders
   workOrders: {
     getAll: (params?: {

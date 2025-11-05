@@ -97,4 +97,152 @@ export class PreventivePlansController {
     }
     return plan;
   }
+
+  /**
+   * POST /planes-preventivos
+   * Create new preventive plan
+   */
+  @ApiOperation({
+    summary: "Crear nuevo plan preventivo",
+    description:
+      "Crea un plan de mantenimiento preventivo para un vehículo. Solo un plan activo por vehículo.",
+  })
+  @ApiBody({
+    type: CreatePlanPreventivoDto,
+    examples: {
+      porKilometraje: {
+        summary: "Plan por Kilometraje",
+        value: {
+          vehiculo_id: 1,
+          tipo_mantenimiento: "Mantenimiento general",
+          tipo_intervalo: "KM",
+          intervalo: 10000,
+          descripcion:
+            "Cambio de aceite, filtros, revisión de frenos cada 10,000 km",
+          proximo_kilometraje: 25000,
+          activo: true,
+        },
+      },
+      porTiempo: {
+        summary: "Plan por Tiempo",
+        value: {
+          vehiculo_id: 2,
+          tipo_mantenimiento: "Revisión técnica",
+          tipo_intervalo: "Tiempo",
+          intervalo: 180,
+          descripcion: "Revisión técnica obligatoria cada 6 meses",
+          proxima_fecha: "2025-06-01",
+          activo: true,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Plan preventivo creado exitosamente",
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden crear planes",
+  })
+  @Post()
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  async create(
+    @Body() createDto: CreatePlanPreventivoDto,
+  ): Promise<PlanPreventivo> {
+    return this.preventivePlansService.create(createDto);
+  }
+
+  /**
+   * PATCH /planes-preventivos/:id
+   * Update existing preventive plan
+   */
+  @ApiOperation({
+    summary: "Actualizar plan preventivo",
+    description: "Actualiza un plan de mantenimiento preventivo existente.",
+  })
+  @ApiParam({
+    name: "id",
+    type: Number,
+    description: "ID del plan preventivo",
+  })
+  @ApiBody({ type: UpdatePlanPreventivoDto })
+  @ApiResponse({
+    status: 200,
+    description: "Plan preventivo actualizado exitosamente",
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden actualizar planes",
+  })
+  @Patch(":id")
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  async update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() updateDto: UpdatePlanPreventivoDto,
+  ): Promise<PlanPreventivo> {
+    return this.preventivePlansService.update(id, updateDto);
+  }
+
+  /**
+   * DELETE /planes-preventivos/:id
+   * Deactivate preventive plan
+   */
+  @ApiOperation({
+    summary: "Desactivar plan preventivo",
+    description: "Desactiva un plan de mantenimiento preventivo (soft delete).",
+  })
+  @ApiParam({
+    name: "id",
+    type: Number,
+    description: "ID del plan preventivo",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Plan preventivo desactivado exitosamente",
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden desactivar planes",
+  })
+  @Delete(":id")
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  async remove(@Param("id", ParseIntPipe) id: number): Promise<void> {
+    return this.preventivePlansService.remove(id);
+  }
+
+  /**
+   * GET /planes-preventivos/vehiculo/:vehiculoId
+   * Get preventive plan by vehicle
+   */
+  @ApiOperation({
+    summary: "Obtener plan preventivo por vehículo",
+    description: "Obtiene el plan de mantenimiento de un vehículo específico.",
+  })
+  @ApiParam({
+    name: "vehiculoId",
+    type: Number,
+    description: "ID del vehículo",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Plan preventivo encontrado",
+  })
+  @ApiResponse({
+    status: 404,
+    description: "Plan no encontrado",
+  })
+  @Get("vehiculo/:vehiculoId")
+  async findByVehiculo(
+    @Param("vehiculoId", ParseIntPipe) vehiculoId: number,
+  ): Promise<PlanPreventivo> {
+    const plan =
+      await this.preventivePlansService.findByVehiculo(vehiculoId);
+    if (!plan) {
+      throw new NotFoundException(
+        `No se encontró plan preventivo para el vehículo con ID ${vehiculoId}`,
+      );
+    }
+    return plan;
+  }
 }
