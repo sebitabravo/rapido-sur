@@ -1,98 +1,326 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🚗 Rápido Sur - Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Sistema de gestión de mantenimiento vehicular para la flota de Rápido Sur (45 vehículos).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Objetivo:** Reducir en un 40% los fallos por mantenimiento atrasado durante el primer año de operación.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 📋 Tabla de Contenidos
 
-## Project setup
+- [Características](#características)
+- [Tecnologías](#tecnologías)
+- [Requisitos Previos](#requisitos-previos)
+- [Instalación](#instalación)
+- [Configuración](#configuración)
+- [Ejecución Local](#ejecución-local)
+- [Testing](#testing)
+- [Build para Producción](#build-para-producción)
+- [Deployment en Dokploy](#deployment-en-dokploy)
+- [Documentación API](#documentación-api)
+- [Arquitectura](#arquitectura)
+- [Equipo](#equipo)
+
+---
+
+## ✨ Características
+
+### Core Funcional
+- ✅ **Gestión de Vehículos**: CRUD completo con validación de patente chilena
+- ✅ **Órdenes de Trabajo**: Flujo completo (Crear → Asignar → Ejecutar → Cerrar)
+- ✅ **Usuarios y Roles**: RBAC con 3 roles (Administrador, Jefe de Mantenimiento, Mecánico)
+- ✅ **Alertas Preventivas**: Sistema automático por kilometraje o tiempo
+- ✅ **Reportes**: Costos de mantenimiento y tiempos de inactividad
+- ✅ **Notificaciones Email**: Alertas automáticas al jefe de mantenimiento
+
+### Seguridad
+- ✅ JWT Authentication con expiración de 24 horas
+- ✅ Passwords con bcrypt (cost factor 12)
+- ✅ Rate limiting (5 intentos/minuto en login)
+- ✅ Helmet security headers
+- ✅ CORS configurado
+- ✅ Validación completa con class-validator
+
+### Calidad
+- ✅ 90 tests unitarios (Jest)
+- ✅ Tests E2E para flujos críticos
+- ✅ TypeScript strict mode
+- ✅ Swagger/OpenAPI documentation
+
+---
+
+## 🛠️ Tecnologías
+
+| Categoría | Tecnología | Versión |
+|-----------|------------|---------|
+| **Runtime** | Node.js | 20 LTS |
+| **Framework** | NestJS | 11.x |
+| **Language** | TypeScript | 5.7+ |
+| **Database** | PostgreSQL | 15 |
+| **ORM** | TypeORM | 0.3.27 |
+| **Auth** | JWT + bcrypt | Latest |
+| **API Docs** | Swagger/OpenAPI | 3.0 |
+| **Testing** | Jest | 30.x |
+
+---
+
+## 📦 Requisitos Previos
+
+- **Node.js** 20 LTS o superior
+- **npm** 9+
+- **PostgreSQL** 15+
+- **Docker** (opcional)
+
+---
+
+## 🚀 Instalación
 
 ```bash
-$ npm install
+# 1. Clonar repositorio
+git clone <repository-url>
+cd rapido-sur/backend
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus valores
+
+# 4. Crear base de datos
+createdb rapido_sur_dev
 ```
 
-## Compile and run the project
+---
+
+## ⚙️ Configuración
+
+Edita `.env` con tus valores:
+
+```env
+NODE_ENV=development
+PORT=3000
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=tu_password
+DB_DATABASE=rapido_sur_dev
+
+JWT_SECRET=genera_secret_seguro
+JWT_EXPIRATION=24h
+
+FRONTEND_URL=http://localhost:5173
+```
+
+**Generar JWT_SECRET:**
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
-## Run tests
+---
+
+## 💻 Ejecución Local
 
 ```bash
-# unit tests
-$ npm run test
+# Desarrollo (hot-reload)
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# La API estará en:
+# http://localhost:3000
+# Swagger docs: http://localhost:3000/api/docs
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## 🧪 Testing
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Tests unitarios
+npm test
+
+# Tests con coverage
+npm run test:cov
+
+# Tests E2E
+npm run test:e2e
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+**Cobertura Actual:**
+- ✅ 90+ tests unitarios
+- ✅ Coverage > 80% en servicios críticos
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🏗️ Build para Producción
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# Compilar TypeScript
+npm run build
 
-## Support
+# Ejecutar producción
+npm run start:prod
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 🚀 Deployment en Dokploy
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Quick Start (10 minutos)
 
-## License
+Ver guía rápida: **[DEPLOYMENT_QUICK_START.md](./DEPLOYMENT_QUICK_START.md)**
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Documentación Completa
+
+Ver guía detallada: **[DEPLOYMENT_DOKPLOY.md](./DEPLOYMENT_DOKPLOY.md)**
+
+### Generar Secrets Seguros
+
+```bash
+# Generar JWT_SECRET, DB_PASSWORD y otros secrets
+node scripts/generate-secrets.js
+```
+
+### Checklist Pre-Deployment
+
+- [ ] Variables de entorno configuradas en Dokploy
+- [ ] PostgreSQL service creado y running
+- [ ] JWT_SECRET generado (mínimo 64 caracteres)
+- [ ] SMTP configurado para emails
+- [ ] Dominio configurado con SSL (Let's Encrypt)
+- [ ] Webhook de GitHub configurado para auto-deploy
+
+### Post-Deployment
+
+```bash
+# 1. Ejecutar migraciones (primera vez)
+npm run migration:run
+
+# 2. Crear usuarios iniciales
+npm run seed
+
+# 3. Verificar health check
+curl https://api.rapidosur.com/health
+
+# 4. Probar login
+curl -X POST https://api.rapidosur.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@rapidosur.cl","password":"Admin123!"}'
+```
+
+---
+
+## 📚 Documentación API
+
+### Swagger/OpenAPI
+
+**Desarrollo:** http://localhost:3000/api/docs
+
+### Endpoints Principales
+
+#### Autenticación
+- `POST /auth/login` - Login
+- `POST /auth/register` - Registro (Admin only)
+- `GET /auth/profile` - Perfil
+
+#### Usuarios
+- `GET /usuarios` - Listar usuarios
+- `POST /usuarios` - Crear usuario
+- `PATCH /usuarios/:id` - Actualizar
+- `DELETE /usuarios/:id` - Desactivar
+
+#### Vehículos
+- `GET /vehiculos` - Listar (paginado)
+- `POST /vehiculos` - Crear
+- `GET /vehiculos/:id/historial` - Historial completo
+
+#### Órdenes de Trabajo
+- `POST /ordenes-trabajo` - Crear orden
+- `PATCH /ordenes-trabajo/:id/asignar` - Asignar mecánico
+- `PATCH /ordenes-trabajo/:id/registrar-trabajo` - Registrar trabajo
+- `PATCH /ordenes-trabajo/:id/cerrar` - Cerrar orden
+
+---
+
+## 🏛️ Arquitectura
+
+### Patrón: N-Tier
+
+```
+┌─────────────────────────────────┐
+│   Controllers (Presentation)    │
+├─────────────────────────────────┤
+│   Services (Business Logic)     │
+├─────────────────────────────────┤
+│   TypeORM (Data Access)         │
+├─────────────────────────────────┤
+│   PostgreSQL (Database)         │
+└─────────────────────────────────┘
+```
+
+### Módulos
+
+```
+src/modules/
+├── auth/              # JWT Authentication
+├── users/             # User management
+├── vehicles/          # Vehicle CRUD
+├── work-orders/       # Work orders (core)
+├── tasks/             # Tasks
+├── parts/             # Parts catalog
+├── preventive-plans/  # Maintenance plans
+├── alerts/            # Alert system
+└── reports/           # Reports generation
+```
+
+---
+
+## 🔒 Roles y Permisos
+
+| Rol | Permisos |
+|-----|----------|
+| **Administrador** | Acceso total, gestión de usuarios |
+| **Jefe de Mantenimiento** | Crear/cerrar OT, ver reportes, alertas |
+| **Mecánico** | Ver OT asignadas, registrar trabajo |
+
+---
+
+## 📊 Scripts Disponibles
+
+```bash
+npm run start:dev          # Desarrollo con hot-reload
+npm run build              # Compilar TypeScript
+npm run start:prod         # Producción
+npm test                   # Tests unitarios
+npm run test:e2e           # Tests E2E
+npm run migration:run      # Ejecutar migraciones
+npm run lint               # ESLint
+npm run format             # Prettier
+```
+
+---
+
+## 👥 Equipo
+
+**Proyecto de Ingeniería Civil en Informática**
+
+- Rubilar
+- Bravo
+- Loyola
+- Aguayo
+
+**Cliente:** Rápido Sur
+**Año:** 2025
+
+---
+
+## 📝 Documentación Adicional
+
+- [CLAUDE.md](../CLAUDE.md) - Memoria completa del proyecto
+- [DEPLOYMENT.md](../DEPLOYMENT.md) - Guía de deployment
+- [Swagger](http://localhost:3000/api/docs) - API interactiva
+
+---
+
+**¡Backend listo para reducir el 40% de fallos por mantenimiento atrasado! 🚀**

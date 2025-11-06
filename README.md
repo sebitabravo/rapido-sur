@@ -37,25 +37,50 @@ git clone <repository-url>
 cd rapido-sur
 ```
 
-### 2. Configurar la base de datos
+### 2. Configurar Docker
 
-Iniciar PostgreSQL con Docker:
+Tenemos tres configuraciones de Docker según tu necesidad:
+
+#### Opción A: Desarrollo del Backend (Recomendado)
 
 ```bash
-docker-compose up -d
+# Levanta solo PostgreSQL y pgAdmin
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-Esto iniciará:
-
+**Servicios iniciados**:
 - PostgreSQL en puerto 5432
-- PgAdmin en puerto 5050 (<http://localhost:5050>)
+- pgAdmin en puerto 5050 (http://localhost:5050)
 
-Credenciales de PgAdmin:
-
-- Email: <admin@rapidosur.com>
+**Credenciales de pgAdmin**:
+- Email: admin@rapidosur.com
 - Password: admin123
 
+#### Opción B: Stack Completo Dockerizado
+
+```bash
+# Levanta PostgreSQL + Backend + Frontend (todo dockerizado)
+docker-compose -f docker-compose.full.yml up -d
+```
+
+**Servicios iniciados**:
+- PostgreSQL: localhost:5432
+- Backend: http://localhost:3000
+- Frontend: http://localhost:5173 (cuando se desarrolle)
+- pgAdmin: http://localhost:5050
+
+#### Opción C: Producción con Dokploy
+
+```bash
+# Dokploy usa automáticamente: docker-compose.yml
+# NO requiere comandos manuales
+```
+
+> 📖 **Para más detalles**, consulta [DOCKER_GUIDE.md](./DOCKER_GUIDE.md)
+
 ### 3. Configurar Backend
+
+#### Si usas docker-compose.dev.yml (Recomendado):
 
 ```bash
 cd backend
@@ -70,11 +95,19 @@ cp .env.example .env
 # Ejecutar migraciones (cuando estén disponibles)
 npm run migration:run
 
-# Iniciar en modo desarrollo
+# Iniciar en modo desarrollo con hot-reload
 npm run start:dev
 ```
 
-El backend estará disponible en <http://localhost:3000>
+El backend estará disponible en http://localhost:3000
+
+#### Si usas docker-compose.full.yml:
+
+El backend ya está corriendo en Docker. Ver logs:
+
+```bash
+docker-compose -f docker-compose.full.yml logs -f backend
+```
 
 ### 4. Configurar Frontend
 
@@ -92,13 +125,16 @@ cp .env.example .env
 npm run dev
 ```
 
-El frontend estará disponible en <http://localhost:5173>
+El frontend estará disponible en http://localhost:5173
 
 ## 📁 Estructura del Proyecto
 
 ```
 rapido-sur/
-├── docker-compose.yml               # Orquestación de servicios
+├── docker-compose.yml               # Para PRODUCCIÓN (Dokploy)
+├── docker-compose.dev.yml           # Para desarrollo local (solo BD)
+├── docker-compose.full.yml          # Stack completo dockerizado
+├── DOCKER_GUIDE.md                  # Guía completa de Docker
 ├── .gitignore                       # Archivos ignorados por Git
 ├── README.md                        # Documentación general
 ├── CLAUDE.md                        # Memoria del proyecto
