@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from "typeorm";
 import {
   IsNotEmpty,
@@ -26,6 +27,9 @@ import { DetalleRepuesto } from "../../part-details/entities/detalle-repuesto.en
  * Each work order contains multiple tasks that need to be completed
  */
 @Entity("tareas")
+@Index(["mecanico_asignado"]) // Index for mechanic's assigned tasks
+@Index(["orden_trabajo"]) // Index for tasks by work order (foreign key)
+@Index(["completada"]) // Index for filtering completed/pending tasks
 export class Tarea {
   @PrimaryGeneratedColumn()
   id: number;

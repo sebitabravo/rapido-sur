@@ -24,10 +24,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private authService: AuthService,
     private configService: ConfigService,
   ) {
+    const jwtSecret = configService.get<string>("JWT_SECRET");
+
+    if (!jwtSecret) {
+      throw new Error("JWT_SECRET must be defined in environment variables");
+    }
+
+    if (jwtSecret.length < 32) {
+      throw new Error("JWT_SECRET must be at least 32 characters long");
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>("JWT_SECRET") || "default-secret",
+      secretOrKey: jwtSecret,
     });
   }
 

@@ -8,6 +8,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from "typeorm";
 import {
   IsNotEmpty,
@@ -29,6 +30,10 @@ import { DetalleRepuesto } from "../../part-details/entities/detalle-repuesto.en
  * State flow: PENDIENTE → ASIGNADA → EN_PROGRESO → FINALIZADA
  */
 @Entity("ordenes_trabajo")
+@Index(["vehiculo", "fecha_creacion"]) // Composite index for reports by vehicle
+@Index(["estado"]) // Index for filtering by status
+@Index(["mecanico"]) // Index for mechanic assignment queries
+@Index(["fecha_creacion"]) // Index for date range queries
 export class OrdenTrabajo {
   @PrimaryGeneratedColumn()
   id: number;
@@ -153,10 +158,11 @@ export class OrdenTrabajo {
   tareas: Tarea[];
 
   /**
-   * Parts used in this work order
+   * Parts used in this work order (accessed through tasks)
+   * Note: DetalleRepuesto belongs to Tarea, not directly to OrdenTrabajo
+   * To access parts: orden.tareas.flatMap(t => t.detalles_repuestos)
    */
-  @OneToMany(() => DetalleRepuesto, (detalleRepuesto) => detalleRepuesto.tarea)
-  detalles_repuestos: DetalleRepuesto[];
+  // Removed incorrect direct relationship - access via tareas instead
 
   /**
    * Computed property: vehicle downtime in days

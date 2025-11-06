@@ -7,6 +7,7 @@ import {
   DeleteDateColumn,
   OneToMany,
   OneToOne,
+  Index,
 } from "typeorm";
 import {
   IsNotEmpty,
@@ -27,6 +28,7 @@ import { PlanPreventivo } from "../../preventive-plans/entities/plan-preventivo.
  * Each vehicle has maintenance history, preventive plan, and current status
  */
 @Entity("vehiculos")
+@Index(["estado"]) // Index for filtering active/inactive vehicles
 export class Vehiculo {
   @PrimaryGeneratedColumn()
   id: number;

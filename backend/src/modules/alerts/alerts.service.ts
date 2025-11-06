@@ -40,6 +40,19 @@ export class AlertsService {
       relations: ["plan_preventivo"],
     });
 
+    // OPTIMIZATION: Fetch all existing unsent alerts in a single query
+    const vehiculoIds = vehiculos.map(v => v.id);
+    const alertasExistentes = await this.alertaRepo
+      .createQueryBuilder("alerta")
+      .where("alerta.vehiculoId IN (:...ids)", { ids: vehiculoIds })
+      .andWhere("alerta.email_enviado = :enviado", { enviado: false })
+      .getMany();
+
+    // Create a map for O(1) lookup
+    const alertasMap = new Map(
+      alertasExistentes.map(a => [a.vehiculo.id, true])
+    );
+
     const alertasGeneradas: Alerta[] = [];
 
     // Check each vehicle
@@ -48,8 +61,13 @@ export class AlertsService {
         continue;
       }
 
+      // Check if alert already exists (in-memory check, no DB query)
+      if (alertasMap.has(vehiculo.id)) {
+        continue; // Alert already exists
+      }
+
       const plan = vehiculo.plan_preventivo;
-      const alerta = await this.verificarVehiculo(vehiculo, plan);
+      const alerta = await this.verificarVehiculoSinQuery(vehiculo, plan);
 
       if (alerta) {
         alertasGeneradas.push(alerta);
@@ -65,23 +83,13 @@ export class AlertsService {
   }
 
   /**
-   * Check a specific vehicle for maintenance needs
+   * Check a specific vehicle for maintenance needs (without DB query)
+   * Note: Caller must check for existing alerts before calling this method
    */
-  private async verificarVehiculo(
+  private async verificarVehiculoSinQuery(
     vehiculo: Vehiculo,
     plan: PlanPreventivo,
   ): Promise<Alerta | null> {
-    // Check if alert already exists
-    const alertaExistente = await this.alertaRepo.findOne({
-      where: {
-        vehiculo: { id: vehiculo.id },
-        email_enviado: false,
-      },
-    });
-
-    if (alertaExistente) {
-      return null; // Alert already exists
-    }
 
     let debeAlertar = false;
     let razon = "";

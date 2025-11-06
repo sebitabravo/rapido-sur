@@ -1,8 +1,10 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
 import { DetalleRepuesto } from "../part-details/entities/detalle-repuesto.entity";
+import { Tarea } from "../tasks/entities/tarea.entity";
 import { FilterReportDto } from "./dto/filter-report.dto";
 import { EstadoOrdenTrabajo, TipoOrdenTrabajo } from "../../common/enums";
 
@@ -17,6 +19,9 @@ export class ReportsService {
     private readonly otRepo: Repository<OrdenTrabajo>,
     @InjectRepository(DetalleRepuesto)
     private readonly detalleRepo: Repository<DetalleRepuesto>,
+    @InjectRepository(Tarea)
+    private readonly tareaRepo: Repository<Tarea>,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -111,6 +116,29 @@ export class ReportsService {
 
     const desglose = await qbDesglose.getRawOne();
 
+    // Query for labor cost (hours worked * hourly rate)
+    const qbManoObra = this.tareaRepo
+      .createQueryBuilder("t")
+      .leftJoin("t.orden_trabajo", "ot")
+      .select([
+        "SUM(t.horas_trabajadas) AS total_horas",
+      ])
+      .where("ot.estado = :estado", { estado: EstadoOrdenTrabajo.Finalizada });
+
+    if (fecha_inicio) {
+      qbManoObra.andWhere("ot.fecha_creacion >= :fecha_inicio", {
+        fecha_inicio,
+      });
+    }
+    if (fecha_fin) {
+      qbManoObra.andWhere("ot.fecha_creacion <= :fecha_fin", { fecha_fin });
+    }
+
+    const manoObra = await qbManoObra.getRawOne();
+    const laborCostPerHour = this.configService.get<number>("LABOR_COST_PER_HOUR", 15000);
+    const totalHoras = parseFloat(manoObra.total_horas || 0);
+    const costoManoObra = totalHoras * laborCostPerHour;
+
     // Calculate totals
     const costoTotalGeneral = costosPorVehiculo.reduce(
       (sum, item) => sum + parseFloat(item.costo_total || 0),
@@ -120,7 +148,9 @@ export class ReportsService {
     return {
       costo_total: costoTotalGeneral,
       costo_repuestos: parseFloat(desglose.costo_repuestos || 0),
-      costo_mano_obra: 0, // TODO: implement if labor cost field is added
+      costo_mano_obra: costoManoObra,
+      total_horas_trabajadas: totalHoras,
+      tarifa_por_hora: laborCostPerHour,
       costos_por_vehiculo: costosPorVehiculo,
       periodo: {
         fecha_inicio: fecha_inicio || null,

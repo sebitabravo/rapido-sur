@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 import { OrdenTrabajo } from "./entities/orden-trabajo.entity";
 import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
 import { Usuario } from "../users/entities/usuario.entity";
@@ -52,6 +53,7 @@ export class WorkOrdersService {
     private readonly repuestoRepo: Repository<Repuesto>,
     @InjectRepository(Tarea)
     private readonly tareaRepo: Repository<Tarea>,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -132,7 +134,7 @@ export class WorkOrdersService {
   ): Promise<OrdenTrabajo> {
     const orden = await this.otRepo.findOne({
       where: { id },
-      relations: ["mecanico", "vehiculo", "detalles_repuestos", "tareas"],
+      relations: ["mecanico", "vehiculo", "tareas", "tareas.detalles_repuestos"],
     });
 
     if (!orden) {
@@ -187,8 +189,8 @@ export class WorkOrdersService {
       relations: [
         "vehiculo",
         "vehiculo.plan_preventivo",
-        "detalles_repuestos",
         "tareas",
+        "tareas.detalles_repuestos",
       ],
     });
 
@@ -212,12 +214,26 @@ export class WorkOrdersService {
     }
 
     // Calculate total cost (parts + labor)
-    const costoRepuestos = orden.detalles_repuestos.reduce(
+    // 1. Parts cost
+    const todosLosDetalles = orden.tareas.flatMap((t) => t.detalles_repuestos || []);
+    const costoRepuestos = todosLosDetalles.reduce(
       (sum, detalle) =>
         sum + detalle.cantidad_usada * detalle.precio_unitario_momento,
       0,
     );
-    const costoManoObra = 0; // TODO: implement according to business logic
+
+    // 2. Labor cost (hours worked * hourly rate)
+    const laborCostPerHour = this.configService.get<number>("LABOR_COST_PER_HOUR", 15000);
+    const totalHorasTrabajadas = orden.tareas.reduce(
+      (sum, tarea) => sum + (tarea.horas_trabajadas || 0),
+      0,
+    );
+    const costoManoObra = totalHorasTrabajadas * laborCostPerHour;
+
+    this.logger.log(
+      `Costo calculado para OT ${orden.numero_ot}: Repuestos=${costoRepuestos} CLP, Mano de obra=${costoManoObra} CLP (${totalHorasTrabajadas}h * ${laborCostPerHour} CLP/h)`
+    );
+
     orden.costo_total = costoRepuestos + costoManoObra;
 
     // Set close date
@@ -299,8 +315,8 @@ export class WorkOrdersService {
         "vehiculo",
         "mecanico",
         "tareas",
-        "detalles_repuestos",
-        "detalles_repuestos.repuesto",
+        "tareas.detalles_repuestos",
+        "tareas.detalles_repuestos.repuesto",
       ],
     });
 
