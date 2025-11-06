@@ -2,11 +2,12 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEnum, IsInt, IsOptional, IsDateString } from "class-validator";
 import { Type } from "class-transformer";
 import { EstadoOrdenTrabajo, TipoOrdenTrabajo } from "../../../common/enums";
+import { PaginationDto } from "../../../common/dto/pagination.dto";
 
 /**
- * DTO for filtering work orders
+ * DTO for filtering work orders with pagination
  */
-export class FilterOrdenTrabajoDto {
+export class FilterOrdenTrabajoDto extends PaginationDto {
   @ApiPropertyOptional({
     description: "Filtrar por ID de vehículo",
     example: 1,

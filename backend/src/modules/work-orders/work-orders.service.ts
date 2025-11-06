@@ -9,6 +9,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ConfigService } from "@nestjs/config";
 import { OrdenTrabajo } from "./entities/orden-trabajo.entity";
+import {
+  PaginatedResult,
+  createPaginatedResponse,
+} from "../../common/dto/pagination.dto";
 import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
 import { Usuario } from "../users/entities/usuario.entity";
 import { PlanPreventivo } from "../preventive-plans/entities/plan-preventivo.entity";
@@ -264,9 +268,11 @@ export class WorkOrdersService {
   }
 
   /**
-   * Find all work orders with filters
+   * Find all work orders with filters and pagination
    */
-  async findAll(filters: FilterOrdenTrabajoDto): Promise<OrdenTrabajo[]> {
+  async findAll(
+    filters: FilterOrdenTrabajoDto,
+  ): Promise<PaginatedResult<OrdenTrabajo>> {
     const qb = this.otRepo
       .createQueryBuilder("ot")
       .leftJoinAndSelect("ot.vehiculo", "v")
@@ -302,7 +308,13 @@ export class WorkOrdersService {
 
     qb.orderBy("ot.fecha_creacion", "DESC");
 
-    return qb.getMany();
+    // Apply pagination
+    qb.skip(filters.skip).take(filters.limit);
+
+    // Get items and total count
+    const [items, total] = await qb.getManyAndCount();
+
+    return createPaginatedResponse(items, total, filters.page, filters.limit);
   }
 
   /**

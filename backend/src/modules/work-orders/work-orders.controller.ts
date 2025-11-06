@@ -115,10 +115,12 @@ export class WorkOrdersController {
    * List all work orders with filters
    */
   @ApiOperation({
-    summary: "Listar órdenes de trabajo",
+    summary: "Listar órdenes de trabajo con paginación",
     description:
-      "Obtiene todas las órdenes de trabajo con filtros opcionales (vehículo, estado, tipo, fechas, mecánico).",
+      "Obtiene todas las órdenes de trabajo con filtros opcionales (vehículo, estado, tipo, fechas, mecánico) y paginación.",
   })
+  @ApiQuery({ name: "page", required: false, type: Number, description: "Número de página (por defecto: 1)" })
+  @ApiQuery({ name: "limit", required: false, type: Number, description: "Elementos por página (por defecto: 10, máximo: 100)" })
   @ApiQuery({ name: "vehiculo_id", required: false, type: Number })
   @ApiQuery({ name: "estado", required: false, enum: ["Pendiente", "Asignada", "EnProgreso", "Finalizada"] })
   @ApiQuery({ name: "tipo", required: false, enum: ["Preventivo", "Correctivo"] })
@@ -127,13 +129,21 @@ export class WorkOrdersController {
   @ApiQuery({ name: "mecanico_id", required: false, type: Number })
   @ApiResponse({
     status: 200,
-    description: "Lista de órdenes de trabajo",
-    isArray: true,
+    description: "Lista paginada de órdenes de trabajo",
+    schema: {
+      properties: {
+        items: { type: "array" },
+        total: { type: "number" },
+        page: { type: "number" },
+        limit: { type: "number" },
+        totalPages: { type: "number" },
+        hasNextPage: { type: "boolean" },
+        hasPreviousPage: { type: "boolean" },
+      },
+    },
   })
   @Get()
-  async findAll(
-    @Query() filters: FilterOrdenTrabajoDto,
-  ): Promise<OrdenTrabajo[]> {
+  async findAll(@Query() filters: FilterOrdenTrabajoDto) {
     return this.workOrdersService.findAll(filters);
   }
 
