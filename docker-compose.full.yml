@@ -1,21 +1,19 @@
 # ================================
-# Docker Compose COMPLETO - Desarrollo Local
+# Docker Compose COMPLETO - PRODUCCIÓN (Dokploy)
 # ================================
-# Este archivo levanta el stack completo:
-# - PostgreSQL 15
+# Este archivo levanta el stack completo para producción:
+# - PostgreSQL 15 (SIN exponer puerto al host)
 # - Backend (NestJS)
-# - Frontend (React) - PLACEHOLDER para cuando lo desarrolles
-# - pgAdmin (herramienta de gestión de BD)
 #
-# USO:
-# docker-compose -f docker-compose.full.yml up -d
-# docker-compose -f docker-compose.full.yml down
+# IMPORTANTE PARA PRODUCCIÓN:
+# - PostgreSQL NO expone puerto 5432 al host (solo red interna)
+# - pgAdmin NO incluido en producción (usar cliente externo si necesario)
+# - Todas las credenciales deben venir de variables de entorno
+# - Los contenedores se comunican por red interna "rapido-sur-network"
 #
-# PUERTOS:
-# - Backend:  http://localhost:3000
-# - Frontend: http://localhost:8080
-# - pgAdmin:  http://localhost:5050
-# - PostgreSQL: localhost:5432
+# USO EN DOKPLOY:
+# Dokploy usa este archivo automáticamente cuando detecta docker-compose
+# Configura las variables de entorno en Dokploy UI
 # ================================
 
 services:
@@ -27,17 +25,19 @@ services:
     container_name: rapido-sur-db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: rapido_sur
-    ports:
-      - '5432:5432'
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+      POSTGRES_DB: ${DB_DATABASE:-rapido_sur}
+    # IMPORTANTE: NO exponer puerto al host en producción
+    # Los contenedores se comunican por red interna
+    # ports:
+    #   - '5432:5432'  # COMENTADO para producción
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - rapido-sur-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,101 +50,73 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
+      args:
+        NODE_ENV: production
     container_name: rapido-sur-backend
     restart: always
     ports:
-      - '3000:3000'
+      - '${PORT:-3000}:3000'
     environment:
       # Application
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
 
-      # Database (use postgres service name as host)
+      # Database (use postgres service name as host - comunicación interna)
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres123
-      DB_DATABASE: rapido_sur
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      DB_DATABASE: ${DB_DATABASE:-rapido_sur}
 
-      # JWT
-      JWT_SECRET: dev_secret_key_change_in_production_12345
-      JWT_EXPIRATION: 24h
+      # JWT - IMPORTANTE: Configurar en Dokploy UI
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
 
-      # CORS
-      FRONTEND_URL: http://localhost:8080
+      # CORS - IMPORTANTE: Configurar URL del frontend en Dokploy
+      FRONTEND_URL: ${FRONTEND_URL}
 
-      # Email (development - disabled)
-      MAIL_HOST: smtp.gmail.com
-      MAIL_PORT: 587
-      MAIL_SECURE: false
-      MAIL_USER: dev@rapidosur.cl
-      MAIL_PASSWORD: devpassword
-      MAIL_FROM: noreply@rapidosur.cl
-      MAINTENANCE_MANAGER_EMAIL: manager@rapidosur.cl
+      # Email Configuration - IMPORTANTE: Configurar en Dokploy UI
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SECURE: ${MAIL_SECURE:-false}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-noreply@rapidosur.cl}
+      MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL}
 
-      # Cron (disabled in development to avoid spam)
-      ENABLE_CRON: false
+      # Cron (habilitado en producción para alertas preventivas)
+      ENABLE_CRON: ${ENABLE_CRON:-true}
+      ALERTS_CRON_SCHEDULE: ${ALERTS_CRON_SCHEDULE:-0 6 * * *}
 
-      # Database Seeding (enabled in development to create initial users)
-      ENABLE_SEEDING: true
+      # Database Seeding (deshabilitado en producción)
+      ENABLE_SEEDING: ${ENABLE_SEEDING:-false}
 
       # Logging
-      LOG_LEVEL: debug
+      LOG_LEVEL: ${LOG_LEVEL:-info}
 
-      # Rate Limiting (more permissive in dev)
-      THROTTLE_TTL: 60000
-      THROTTLE_LIMIT: 100
+      # Rate Limiting
+      THROTTLE_TTL: ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-10}
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - rapido-sur-network
+    volumes:
+      # Logs persistentes (Dokploy pattern)
+      - backend_logs:/app/logs
     healthcheck:
       test: ['CMD-SHELL', 'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"']
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-
-  # ================================
-  # Frontend (Next.js)
-  # NOTA: Descomenta cuando desarrolles el frontend
-  # ================================
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #     target: production
-  #   container_name: rapido-sur-frontend
-  #   restart: always
-  #   ports:
-  #     - '8080:3000'
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://localhost:3000/api
-  #   networks:
-  #     - rapido-sur-network
-  #   depends_on:
-  #     - backend
-
-  # ================================
-  # pgAdmin - Database Management UI
-  # ================================
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: rapido-sur-pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rapidosur.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - '5050:80'
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - rapido-sur-network
-    depends_on:
-      - postgres
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+        compress: 'true'
 
 # ================================
 # Volumes
@@ -153,9 +125,9 @@ volumes:
   postgres_data:
     driver: local
     name: rapido-sur-postgres-data
-  pgadmin_data:
+  backend_logs:
     driver: local
-    name: rapido-sur-pgadmin-data
+    name: rapido-sur-backend-logs
 
 # ================================
 # Networks
@@ -164,3 +136,21 @@ networks:
   rapido-sur-network:
     driver: bridge
     name: rapido-sur-network
+
+# ================================
+# NOTAS IMPORTANTES PARA PRODUCCIÓN
+# ================================
+# 1. pgAdmin NO incluido - usar cliente externo si necesitas gestionar BD
+# 2. PostgreSQL NO expone puerto 5432 al host por seguridad
+# 3. Frontend se despliega como aplicación separada en Dokploy
+# 4. Todas las variables de entorno deben configurarse en Dokploy UI
+# 5. Los logs del backend se persisten en volumen backend_logs
+# 6. La comunicación entre contenedores es por red interna rapido-sur-network
+#
+# VARIABLES DE ENTORNO REQUERIDAS EN DOKPLOY:
+# - JWT_SECRET (obligatorio, diferente de desarrollo)
+# - FRONTEND_URL (obligatorio)
+# - MAIL_HOST, MAIL_USER, MAIL_PASSWORD (obligatorio para alertas)
+# - MAINTENANCE_MANAGER_EMAIL (obligatorio)
+# - DB_USERNAME, DB_PASSWORD, DB_DATABASE (recomendado cambiar valores default)
+# ================================
