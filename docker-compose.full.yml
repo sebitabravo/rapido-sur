@@ -18,8 +18,6 @@
 # - PostgreSQL: localhost:5432
 # ================================
 
-version: '3.8'
-
 services:
   # ================================
   # PostgreSQL Database
@@ -86,6 +84,9 @@ services:
 
       # Cron (disabled in development to avoid spam)
       ENABLE_CRON: false
+
+      # Database Seeding (enabled in development to create initial users)
+      ENABLE_SEEDING: true
 
       # Logging
       LOG_LEVEL: debug

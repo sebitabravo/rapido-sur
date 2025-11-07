@@ -1,7 +1,6 @@
 # Dependencies
 node_modules/
 */node_modules/
-package-lock.json
 
 # Environment variables
 .env
@@ -56,6 +55,7 @@ coverage/
 .playwright-mcp/
 *.lcov
 .nyc_output/
+.claude
 
 # Temporary files
 *.tmp

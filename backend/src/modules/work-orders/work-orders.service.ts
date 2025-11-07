@@ -314,7 +314,12 @@ export class WorkOrdersService {
     // Get items and total count
     const [items, total] = await qb.getManyAndCount();
 
-    return createPaginatedResponse(items, total, filters.page, filters.limit);
+    return createPaginatedResponse(
+      items,
+      total,
+      filters.page ?? 1,
+      filters.limit ?? 10,
+    );
   }
 
   /**

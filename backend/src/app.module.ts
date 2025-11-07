@@ -17,6 +17,8 @@ import { PartsModule } from "./modules/parts/parts.module";
 import { PartDetailsModule } from "./modules/part-details/part-details.module";
 import { AlertsModule } from "./modules/alerts/alerts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { SeedingService } from "./database/seeding.service";
+import { Usuario } from "./modules/users/entities/usuario.entity";
 
 @Module({
   imports: [
@@ -83,10 +85,13 @@ import { ReportsModule } from "./modules/reports/reports.module";
     PartDetailsModule,
     AlertsModule,
     ReportsModule,
+    // Import Usuario entity for seeding
+    TypeOrmModule.forFeature([Usuario]),
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    SeedingService, // Automatic database seeding on startup
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

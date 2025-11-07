@@ -48,8 +48,14 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy compiled code from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy scripts directory (includes docker-entrypoint.sh)
+COPY --chown=nestjs:nodejs scripts ./scripts
+
 # Copy .env.example for reference (actual .env comes from Dokploy)
 COPY .env.example ./
+
+# Make entrypoint script executable
+RUN chmod +x /app/scripts/docker-entrypoint.sh
 
 # Change ownership to non-root user
 RUN chown -R nestjs:nodejs /app
@@ -64,8 +70,8 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
+# Use dumb-init to handle signals properly and run entrypoint script
+ENTRYPOINT ["dumb-init", "--", "/app/scripts/docker-entrypoint.sh"]
 
-# Start application
+# Start application (passed to entrypoint script)
 CMD ["node", "dist/main.js"]
