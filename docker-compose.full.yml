@@ -1,25 +1,6 @@
-# ================================
-# Docker Compose COMPLETO - PRODUCCIÓN (Dokploy)
-# ================================
-# Este archivo levanta el stack completo para producción:
-# - PostgreSQL 15 (SIN exponer puerto al host)
-# - Backend (NestJS)
-#
-# IMPORTANTE PARA PRODUCCIÓN:
-# - PostgreSQL NO expone puerto 5432 al host (solo red interna)
-# - pgAdmin NO incluido en producción (usar cliente externo si necesario)
-# - Todas las credenciales deben venir de variables de entorno
-# - Los contenedores se comunican por red interna "rapido-sur-network"
-#
-# USO EN DOKPLOY:
-# Dokploy usa este archivo automáticamente cuando detecta docker-compose
-# Configura las variables de entorno en Dokploy UI
-# ================================
+version: '3.8'
 
 services:
-  # ================================
-  # PostgreSQL Database
-  # ================================
   postgres:
     image: postgres:15-alpine
     container_name: rapido-sur-db
@@ -28,10 +9,6 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
       POSTGRES_DB: ${DB_DATABASE:-rapido_sur}
-    # IMPORTANTE: NO exponer puerto al host en producción
-    # Los contenedores se comunican por red interna
-    # ports:
-    #   - '5432:5432'  # COMENTADO para producción
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -42,9 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ================================
-  # Backend API (NestJS)
-  # ================================
   backend:
     build:
       context: ./backend
@@ -54,28 +28,23 @@ services:
         NODE_ENV: production
     container_name: rapido-sur-backend
     restart: always
-    ports:
-      - '${PORT:-3000}:3000'
+    expose:
+      - "3000"
     environment:
-      # Application
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
 
-      # Database (use postgres service name as host - comunicación interna)
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres123}
       DB_DATABASE: ${DB_DATABASE:-rapido_sur}
 
-      # JWT - IMPORTANTE: Configurar en Dokploy UI
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
 
-      # CORS - IMPORTANTE: Configurar URL del frontend en Dokploy
       FRONTEND_URL: ${FRONTEND_URL}
 
-      # Email Configuration - IMPORTANTE: Configurar en Dokploy UI
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_SECURE: ${MAIL_SECURE:-false}
@@ -84,17 +53,11 @@ services:
       MAIL_FROM: ${MAIL_FROM:-noreply@rapidosur.cl}
       MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL}
 
-      # Cron (habilitado en producción para alertas preventivas)
       ENABLE_CRON: ${ENABLE_CRON:-true}
       ALERTS_CRON_SCHEDULE: ${ALERTS_CRON_SCHEDULE:-0 6 * * *}
-
-      # Database Seeding (deshabilitado en producción)
       ENABLE_SEEDING: ${ENABLE_SEEDING:-false}
 
-      # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
-
-      # Rate Limiting
       THROTTLE_TTL: ${THROTTLE_TTL:-60000}
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-10}
     depends_on:
@@ -103,7 +66,6 @@ services:
     networks:
       - rapido-sur-network
     volumes:
-      # Logs persistentes (Dokploy pattern)
       - backend_logs:/app/logs
     healthcheck:
       test: ['CMD-SHELL', 'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"']
@@ -118,9 +80,6 @@ services:
         max-file: '5'
         compress: 'true'
 
-# ================================
-# Volumes
-# ================================
 volumes:
   postgres_data:
     driver: local
@@ -129,28 +88,7 @@ volumes:
     driver: local
     name: rapido-sur-backend-logs
 
-# ================================
-# Networks
-# ================================
 networks:
   rapido-sur-network:
     driver: bridge
     name: rapido-sur-network
-
-# ================================
-# NOTAS IMPORTANTES PARA PRODUCCIÓN
-# ================================
-# 1. pgAdmin NO incluido - usar cliente externo si necesitas gestionar BD
-# 2. PostgreSQL NO expone puerto 5432 al host por seguridad
-# 3. Frontend se despliega como aplicación separada en Dokploy
-# 4. Todas las variables de entorno deben configurarse en Dokploy UI
-# 5. Los logs del backend se persisten en volumen backend_logs
-# 6. La comunicación entre contenedores es por red interna rapido-sur-network
-#
-# VARIABLES DE ENTORNO REQUERIDAS EN DOKPLOY:
-# - JWT_SECRET (obligatorio, diferente de desarrollo)
-# - FRONTEND_URL (obligatorio)
-# - MAIL_HOST, MAIL_USER, MAIL_PASSWORD (obligatorio para alertas)
-# - MAINTENANCE_MANAGER_EMAIL (obligatorio)
-# - DB_USERNAME, DB_PASSWORD, DB_DATABASE (recomendado cambiar valores default)
-# ================================
