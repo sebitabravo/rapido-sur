@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -14,7 +12,7 @@ services:
     networks:
       - rapido-sur-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres}']
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,6 +28,18 @@ services:
     restart: always
     expose:
       - "3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-http.rule=Host(`api-rapidosur.sbravo.app`)"
+      - "traefik.http.routers.backend-http.entrypoints=web"
+      - "traefik.http.routers.backend-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.backend-https.rule=Host(`api-rapidosur.sbravo.app`)"
+      - "traefik.http.routers.backend-https.entrypoints=websecure"
+      - "traefik.http.routers.backend-https.tls=true"
+      - "traefik.http.routers.backend-https.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
@@ -65,10 +75,15 @@ services:
         condition: service_healthy
     networks:
       - rapido-sur-network
+      - dokploy-network
     volumes:
       - backend_logs:/app/logs
     healthcheck:
-      test: ['CMD-SHELL', 'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"']
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -76,9 +91,9 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: '10m'
-        max-file: '5'
-        compress: 'true'
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
 
 volumes:
   postgres_data:
@@ -92,3 +107,6 @@ networks:
   rapido-sur-network:
     driver: bridge
     name: rapido-sur-network
+  dokploy-network:
+    external: true
+    name: dokploy-network
