@@ -21,6 +21,7 @@ describe("AlertsService", () => {
     findOne: jest.fn(),
     find: jest.fn(),
     delete: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockPlanRepo = {
@@ -69,6 +70,14 @@ describe("AlertsService", () => {
     mailService = module.get<MailService>(MailService);
 
     jest.clearAllMocks();
+    
+    // Setup default mock for createQueryBuilder
+    const mockQB = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    };
+    mockAlertaRepo.createQueryBuilder.mockReturnValue(mockQB);
   });
 
   it("should be defined", () => {
@@ -392,12 +401,19 @@ describe("AlertsService", () => {
 
       const existingAlert = {
         id: 1,
-        vehiculo: mockVehiculo,
+        vehiculo: { id: 1 },
         email_enviado: false,
       } as Alerta;
 
+      // Setup createQueryBuilder to return existing alert
+      const mockQB = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([existingAlert]),
+      };
+      mockAlertaRepo.createQueryBuilder.mockReturnValue(mockQB);
+
       mockVehiculoRepo.find.mockResolvedValue([mockVehiculo]);
-      mockAlertaRepo.findOne.mockResolvedValue(existingAlert); // Alert already exists
 
       await service.verificarAlertasPreventivas();
 

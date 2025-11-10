@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { ConfigService } from "@nestjs/config";
 import {
   NotFoundException,
   BadRequestException,
@@ -67,6 +68,10 @@ describe("WorkOrdersService", () => {
     findOne: jest.fn(),
   };
 
+  const mockConfigService = {
+    get: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -98,6 +103,10 @@ describe("WorkOrdersService", () => {
         {
           provide: getRepositoryToken(Tarea),
           useValue: mockTareaRepo,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
         },
       ],
     }).compile();
@@ -679,8 +688,8 @@ describe("WorkOrdersService", () => {
           "vehiculo",
           "mecanico",
           "tareas",
-          "detalles_repuestos",
-          "detalles_repuestos.repuesto",
+          "tareas.detalles_repuestos",
+          "tareas.detalles_repuestos.repuesto",
         ],
       });
     });

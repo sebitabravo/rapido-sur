@@ -19,6 +19,7 @@ describe("VehiclesService", () => {
     save: jest.fn(),
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(),
+    softRemove: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -483,12 +484,14 @@ describe("VehiclesService", () => {
         ...mockVehiculo,
         estado: EstadoVehiculo.Inactivo,
       });
+      mockVehiculoRepo.softRemove.mockResolvedValue(mockVehiculo);
 
       await service.remove(1);
 
       expect(vehiculoRepo.save).toHaveBeenCalled();
       const savedVehiculo = mockVehiculoRepo.save.mock.calls[0][0];
       expect(savedVehiculo.estado).toBe(EstadoVehiculo.Inactivo);
+      expect(vehiculoRepo.softRemove).toHaveBeenCalled();
     });
 
     it("should throw BadRequestException if vehicle has active work orders", async () => {
@@ -521,6 +524,7 @@ describe("VehiclesService", () => {
         estado: EstadoVehiculo.Activo,
       } as Vehiculo);
       mockVehiculoRepo.save.mockResolvedValue({} as Vehiculo);
+      mockVehiculoRepo.softRemove.mockResolvedValue({} as Vehiculo);
 
       await service.remove(1);
 
