@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 const workOrderSchema = z.object({
   vehiculo_id: z.number().min(1, "Debe seleccionar un vehículo"),
@@ -39,6 +40,8 @@ interface WorkOrderDialogProps {
 export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkOrderDialogProps) {
   const [loading, setLoading] = useState(false)
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingData, setPendingData] = useState<WorkOrderFormData | null>(null)
   const isEdit = !!workOrder
 
   const {
@@ -92,13 +95,21 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
   }
 
   const onSubmit = async (data: WorkOrderFormData) => {
+    setPendingData(data)
+    setConfirmOpen(true)
+  }
+
+  const handleConfirm = async () => {
+    if (!pendingData) return
+    
     try {
       setLoading(true)
-      // Payload matches backend DTO exactly
+      setConfirmOpen(false)
+      
       const payload = {
-        vehiculo_id: data.vehiculo_id,
-        tipo: data.tipo,
-        descripcion: data.descripcion,
+        vehiculo_id: pendingData.vehiculo_id,
+        tipo: pendingData.tipo,
+        descripcion: pendingData.descripcion,
       }
 
       if (isEdit) {
@@ -109,8 +120,9 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
         toast.success("Orden de trabajo creada correctamente")
       }
       onSave()
+      setPendingData(null)
     } catch (error: any) {
-      console.error("[v0] Error saving work order:", error)
+      console.error("Error saving work order:", error)
       toast.error(error.response?.data?.message || "Error al guardar la orden de trabajo")
     } finally {
       setLoading(false)
@@ -197,6 +209,20 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={handleConfirm}
+        title={isEdit ? "Confirmar Actualización" : "Confirmar Creación"}
+        description={
+          isEdit
+            ? "¿Está seguro que desea actualizar esta orden de trabajo? Los cambios se guardarán inmediatamente."
+            : "¿Está seguro que desea crear esta orden de trabajo? Se notificará al mecánico asignado."
+        }
+        confirmText={isEdit ? "Sí, Actualizar" : "Sí, Crear"}
+        cancelText="Cancelar"
+      />
     </Dialog>
   )
 }

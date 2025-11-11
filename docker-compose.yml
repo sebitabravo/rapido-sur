@@ -1,25 +1,38 @@
-# ================================
-# Docker Compose para PRODUCCIÓN (Dokploy)
-# ================================
-# Este archivo está optimizado para deployment en Dokploy/Hostinger
-#
-# IMPORTANTE PARA DOKPLOY:
-# 1. Dokploy usa este archivo automáticamente desde la raíz del proyecto
-# 2. PostgreSQL se configura como servicio separado en Dokploy UI
-# 3. Frontend se despliega como aplicación separada en Dokploy
-# 4. Las variables de entorno se configuran en Dokploy UI (ver backend/.env.example)
-# 5. Dokploy maneja automáticamente los certificados SSL con Let's Encrypt
-#
-# PARA DESARROLLO LOCAL:
-# Use: docker-compose -f docker-compose.dev.yml up
-# ================================
-
-version: '3.8'
-
 services:
-  # ================================
-  # Backend API (NestJS)
-  # ================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: rapido-sur-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+      POSTGRES_DB: ${DB_DATABASE:-rapido_sur}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - rapido-sur-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
@@ -27,106 +40,129 @@ services:
       target: production
       args:
         NODE_ENV: production
-    image: rapido-sur-backend:latest
     container_name: rapido-sur-backend
     restart: always
-
-    # Port mapping
     ports:
-      - '${PORT:-3000}:3000'
-
-    # ================================
-    # Environment Variables
-    # IMPORTANT: Configure these in Dokploy UI
-    # DO NOT hardcode sensitive values here
-    # ================================
+      - "${PORT:-3000}:3000"
+    env_file:
+      - ./backend/.env
     environment:
-      # Application Settings
-      NODE_ENV: production
-      PORT: ${PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
 
-      # Database Connection (Dokploy PostgreSQL service)
-      # Dokploy will provide these values through its UI
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_DATABASE: ${DB_DATABASE}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      DB_DATABASE: ${DB_DATABASE:-rapido_sur}
 
-      # JWT Authentication
-      JWT_SECRET: ${JWT_SECRET}
+      # JWT Configuration
+      # WARNING: In production, you MUST set a secure JWT_SECRET:
+      #   - At least 64 characters long
+      #   - Random, cryptographically secure string
+      #   - Do NOT use the default value below
+      # Generate with: openssl rand -base64 64 | tr -d '\n'
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_production_ONLY_FOR_DEV_12345678901234567890}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
 
-      # CORS Configuration
-      FRONTEND_URL: ${FRONTEND_URL}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
 
-      # Email Configuration
-      MAIL_HOST: ${MAIL_HOST}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_SECURE: ${MAIL_SECURE:-false}
-      MAIL_USER: ${MAIL_USER}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_USER: ${MAIL_USER:-dev@rapidosur.cl}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-devpassword}
       MAIL_FROM: ${MAIL_FROM:-noreply@rapidosur.cl}
+      MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL:-manager@rapidosur.cl}
 
-      # Maintenance Alerts
-      MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL}
       ENABLE_CRON: ${ENABLE_CRON:-true}
       ALERTS_CRON_SCHEDULE: ${ALERTS_CRON_SCHEDULE:-0 6 * * *}
+      ENABLE_SEEDING: ${ENABLE_SEEDING:-false}
 
-      # Logging & Monitoring
       LOG_LEVEL: ${LOG_LEVEL:-info}
-
-      # Rate Limiting
       THROTTLE_TTL: ${THROTTLE_TTL:-60000}
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-10}
-
-    # ================================
-    # Persistent Volumes (Dokploy pattern)
-    # Using ../files/ ensures data persists across deployments
-    # ================================
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rapido-sur-network
     volumes:
-      - ../files/backend-logs:/app/logs
-
-    # ================================
-    # Health Check
-    # ================================
+      - backend_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
     healthcheck:
-      test: ['CMD-SHELL', 'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"']
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-
-    # ================================
-    # Logging Configuration
-    # ================================
     logging:
       driver: json-file
       options:
-        max-size: '10m'
-        max-file: '5'
-        compress: 'true'
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
 
-    # ================================
-    # Resource Limits (Optional)
-    # Uncomment if needed for your VPS
-    # ================================
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'
-    #       memory: 512M
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 256M
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://backend:3000/api
+    container_name: rapido-sur-frontend
+    restart: always
+    ports:
+      - "8080:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rapido-sur-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-# ================================
-# NOTA IMPORTANTE:
-# ================================
-# PostgreSQL y Frontend NO están incluidos aquí porque:
-# - PostgreSQL: Dokploy lo proporciona como servicio administrado separado
-# - Frontend: Se despliega como aplicación separada en Dokploy para mejor escalabilidad
-#
-# Para desarrollo local completo use:
-# docker-compose -f docker-compose.dev.yml up
-# ================================
+volumes:
+  postgres_data:
+    driver: local
+    name: rapido-sur-postgres-data
+  backend_logs:
+    driver: local
+    name: rapido-sur-backend-logs
+
+networks:
+  rapido-sur-network:
+    driver: bridge
+    name: rapido-sur-network

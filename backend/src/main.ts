@@ -5,8 +5,75 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 
+/**
+ * Validates that all required environment variables are set
+ * Throws error if any required variable is missing or invalid
+ */
+function validateEnvironment() {
+  const logger = new Logger("Environment");
+  const required = [
+    "DB_HOST",
+    "DB_PORT",
+    "DB_USERNAME",
+    "DB_PASSWORD",
+    "DB_DATABASE",
+    "JWT_SECRET",
+    "JWT_EXPIRATION",
+    "FRONTEND_URL",
+  ];
+
+  const missing: string[] = [];
+  for (const key of required) {
+    if (!process.env[key]) {
+      missing.push(key);
+    }
+  }
+
+  if (missing.length > 0) {
+    logger.error(`❌ Missing required environment variables: ${missing.join(", ")}`);
+    logger.error("Please check your .env file or environment configuration");
+    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+
+  // Validate JWT_SECRET in production
+  if (process.env.NODE_ENV === "production") {
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+      logger.error("❌ JWT_SECRET is not set in production");
+      throw new Error("JWT_SECRET is required in production");
+    }
+
+    // Check for insecure defaults or weak secrets
+    if (
+      jwtSecret.includes("dev_") ||
+      jwtSecret.includes("secret_key") ||
+      jwtSecret.length < 64
+    ) {
+      logger.error("❌ JWT_SECRET is insecure in production environment");
+      logger.error("Requirements:");
+      logger.error("  - Must NOT contain 'dev_' or 'secret_key'");
+      logger.error("  - Must be at least 64 characters long");
+      logger.error("  - Should be a random, cryptographically secure string");
+      throw new Error("Insecure JWT_SECRET in production");
+    }
+
+    logger.log("✅ JWT_SECRET validated for production");
+  }
+
+  logger.log("✅ All required environment variables are set");
+}
+
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
+
+  // Validate environment variables before starting
+  try {
+    validateEnvironment();
+  } catch (error) {
+    logger.error("Failed to validate environment variables");
+    process.exit(1);
+  }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     // Use NestJS logger instead of console.log
@@ -98,7 +165,9 @@ async function bootstrap() {
 
       - **Versión**: 1.0.0
       - **Equipo**: Rubilar, Bravo, Loyola, Aguayo
-      - **Universidad**: Ingeniería Civil en Informática
+      - **Institución**: Instituto Profesional INACAP
+      - **Campus**: Temuco
+      - **Programa**: Ingeniería en Informática
       - **Cliente**: Rápido Sur (45 vehículos)
       `,
     )

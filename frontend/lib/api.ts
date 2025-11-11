@@ -164,4 +164,33 @@ export const api = {
     update: (id: number, data: any) => apiClient.put(`/usuarios/${id}`, data),
     delete: (id: number) => apiClient.delete(`/usuarios/${id}`),
   },
+
+  // Tasks
+  tasks: {
+    getAll: () => apiClient.get("/tareas"),
+    getById: (id: number) => apiClient.get(`/tareas/${id}`),
+    getByWorkOrder: (ordenTrabajoId: number) => apiClient.get(`/tareas/orden-trabajo/${ordenTrabajoId}`),
+    create: (data: any) => apiClient.post("/tareas", data),
+    update: (id: number, data: any) => apiClient.patch(`/tareas/${id}`, data),
+    complete: (id: number) => apiClient.patch(`/tareas/${id}/completar`),
+    delete: (id: number) => apiClient.delete(`/tareas/${id}`),
+  },
+
+  // Parts (Repuestos)
+  parts: {
+    getAll: (params?: { search?: string; categoria?: string }) => apiClient.get("/repuestos", { params }),
+    getById: (id: number) => apiClient.get(`/repuestos/${id}`),
+    create: (data: any) => apiClient.post("/repuestos", data),
+    update: (id: number, data: any) => apiClient.patch(`/repuestos/${id}`, data),
+    delete: (id: number) => apiClient.delete(`/repuestos/${id}`),
+    updateStock: (id: number, cantidad: number) => apiClient.patch(`/repuestos/${id}/stock`, { cantidad }),
+  },
+
+  // Part Details (Detalles de Repuestos en Tareas)
+  partDetails: {
+    getByTask: (tareaId: number) => apiClient.get(`/detalle-repuestos/tarea/${tareaId}`),
+    create: (data: any) => apiClient.post("/detalle-repuestos", data),
+    update: (id: number, data: any) => apiClient.patch(`/detalle-repuestos/${id}`, data),
+    delete: (id: number) => apiClient.delete(`/detalle-repuestos/${id}`),
+  },
 }

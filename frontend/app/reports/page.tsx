@@ -13,9 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
-import { FileText, ArrowLeft, DollarSign, TrendingDown } from "lucide-react"
+import { FileText, ArrowLeft, DollarSign, TrendingDown, Download } from "lucide-react"
 import { toast } from "sonner"
 import { format, subMonths } from "date-fns"
+import { exportToCSV } from "@/lib/export-utils"
 
 interface UnavailabilityReport {
   vehiculo: {
@@ -93,6 +94,43 @@ export default function ReportsPage() {
 
   const handleGenerateCostReport = () => {
     loadCostReport()
+  }
+
+  const handleExportUnavailability = () => {
+    if (unavailabilityData.length === 0) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+    
+    const exportData = unavailabilityData.map(item => ({
+      Patente: item.vehiculo.patente,
+      Marca: item.vehiculo.marca,
+      Modelo: item.vehiculo.modelo,
+      "Días Indisponible": item.diasIndisponible,
+      "Porcentaje (%)": item.porcentajeIndisponibilidad.toFixed(1)
+    }))
+    
+    exportToCSV(exportData, `reporte-indisponibilidad-${format(new Date(), "yyyy-MM-dd")}`)
+    toast.success("Reporte exportado exitosamente")
+  }
+
+  const handleExportCosts = () => {
+    if (costData.length === 0) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+    
+    const exportData = costData.map(item => ({
+      Patente: item.vehiculo.patente,
+      Marca: item.vehiculo.marca,
+      Modelo: item.vehiculo.modelo,
+      "Costo Total": item.costoTotal,
+      "Cantidad Órdenes": item.cantidadOrdenes,
+      "Costo Promedio": item.costoPromedio.toFixed(2)
+    }))
+    
+    exportToCSV(exportData, `reporte-costos-${format(new Date(), "yyyy-MM-dd")}`)
+    toast.success("Reporte exportado exitosamente")
   }
 
   const totalCost = costData.reduce((sum, item) => sum + item.costoTotal, 0)
@@ -180,10 +218,18 @@ export default function ReportsPage() {
                     <CardTitle>Reporte de Indisponibilidad</CardTitle>
                     <CardDescription>Días que cada vehículo estuvo fuera de servicio</CardDescription>
                   </div>
-                  <Button onClick={handleGenerateUnavailabilityReport} disabled={loading}>
-                    <FileText className="h-4 w-4" />
-                    Generar Reporte
-                  </Button>
+                  <div className="flex gap-2">
+                    {unavailabilityData.length > 0 && (
+                      <Button onClick={handleExportUnavailability} variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Exportar CSV
+                      </Button>
+                    )}
+                    <Button onClick={handleGenerateUnavailabilityReport} disabled={loading}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -294,10 +340,18 @@ export default function ReportsPage() {
                     <CardTitle>Reporte de Costos</CardTitle>
                     <CardDescription>Costos de mantenimiento por vehículo</CardDescription>
                   </div>
-                  <Button onClick={handleGenerateCostReport} disabled={loading}>
-                    <FileText className="h-4 w-4" />
-                    Generar Reporte
-                  </Button>
+                  <div className="flex gap-2">
+                    {costData.length > 0 && (
+                      <Button onClick={handleExportCosts} variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Exportar CSV
+                      </Button>
+                    )}
+                    <Button onClick={handleGenerateCostReport} disabled={loading}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

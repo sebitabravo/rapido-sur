@@ -75,6 +75,10 @@ out/
 backend/temp-*.json
 frontend/temp-*.json
 
+# Monorepo
+package-lock.json
+/node_modules
+
 # Personal documentation (optional - uncomment if you don't want to track)
 # Note: All docs are now organized in docs/ folders
 # docs/analysis/*.md  # Uncomment to ignore analysis docs

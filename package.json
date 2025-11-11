@@ -1,0 +1,67 @@
+{
+  "name": "rapido-sur-monorepo",
+  "version": "1.0.0",
+  "description": "Sistema de Gestión de Mantenimiento Vehicular - Rápido Sur",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"DB,BACK,FRONT\" -c \"blue,green,cyan\" \"npm run db:start\" \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "dev:backend": "npm run db:start && concurrently -n \"DB,BACK\" -c \"blue,green\" \"npm run db:logs\" \"npm run backend:dev\"",
+    "dev:frontend": "npm run frontend:dev",
+    "start": "concurrently -n \"BACK,FRONT\" -c \"green,cyan\" \"npm run backend:start\" \"npm run frontend:start\"",
+    "build": "npm run backend:build && npm run frontend:build",
+    "build:backend": "npm run backend:build",
+    "build:frontend": "npm run frontend:build",
+    "backend:dev": "npm run start:dev --workspace=backend",
+    "backend:build": "npm run build --workspace=backend",
+    "backend:start": "npm run start:prod --workspace=backend",
+    "backend:test": "npm run test --workspace=backend",
+    "backend:lint": "npm run lint --workspace=backend",
+    "frontend:dev": "npm run dev --workspace=frontend",
+    "frontend:build": "npm run build --workspace=frontend",
+    "frontend:start": "npm run start --workspace=frontend",
+    "frontend:lint": "npm run lint --workspace=frontend",
+    "db:start": "docker-compose up -d postgres",
+    "db:stop": "docker-compose stop postgres",
+    "db:logs": "docker-compose logs -f postgres",
+    "db:reset": "docker-compose down postgres && docker volume rm rapido-sur-postgres-data && docker-compose up -d postgres",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:build": "docker-compose up -d --build",
+    "install:all": "npm install && npm install --workspace=backend && npm install --workspace=frontend",
+    "clean": "npm run clean:backend && npm run clean:frontend",
+    "clean:backend": "cd backend && rm -rf node_modules dist",
+    "clean:frontend": "cd frontend && rm -rf node_modules .next",
+    "lint": "npm run backend:lint && npm run frontend:lint",
+    "test": "npm run backend:test",
+    "migration:generate": "npm run migration:generate --workspace=backend",
+    "migration:run": "npm run migration:run --workspace=backend",
+    "migration:revert": "npm run migration:revert --workspace=backend",
+    "seed": "npm run seed --workspace=backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "npm-run-all": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/rapido-sur.git"
+  },
+  "keywords": [
+    "maintenance",
+    "fleet-management",
+    "nestjs",
+    "nextjs",
+    "typescript"
+  ],
+  "author": "Rápido Sur Team",
+  "license": "UNLICENSED"
+}
