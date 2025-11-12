@@ -234,6 +234,16 @@ rapido-sur/
 - **Jefe de Mantenimiento**: Crea y supervisa órdenes de trabajo
 - **Mecánico**: Ve y trabaja en órdenes asignadas
 
+## 🔑 Credenciales de Prueba
+
+Para probar el sistema con datos de ejemplo:
+
+- **Admin**: `admin@rapidosur.cl` / `Admin123!`
+- **Jefe de Mantenimiento**: `carlos.rodriguez@rapidosur.cl` / `Manager123!`
+- **Mecánico**: `juan.perez@rapidosur.cl` / `Mechanic123!`
+
+> **Nota**: Estas credenciales se generan automáticamente con el seeding inicial de la base de datos. Para uso en producción, cambiar estas credenciales inmediatamente.
+
 ## 🧪 Testing
 
 ### Backend
