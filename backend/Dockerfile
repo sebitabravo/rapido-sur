@@ -29,9 +29,6 @@ FROM node:20-alpine AS production
 # Set working directory
 WORKDIR /app
 
-# Set NODE_ENV to production
-ENV NODE_ENV=production
-
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 

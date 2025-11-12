@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
       target: production
       args:
-        NODE_ENV: production
+        NODE_ENV: development
     container_name: rapido-sur-backend
     restart: always
     ports:
@@ -47,7 +47,7 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
 
       DB_HOST: postgres
@@ -57,12 +57,8 @@ services:
       DB_DATABASE: ${DB_DATABASE:-rapido_sur}
 
       # JWT Configuration
-      # WARNING: In production, you MUST set a secure JWT_SECRET:
-      #   - At least 64 characters long
-      #   - Random, cryptographically secure string
-      #   - Do NOT use the default value below
-      # Generate with: openssl rand -base64 64 | tr -d '\n'
-      JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_production_ONLY_FOR_DEV_12345678901234567890}
+      # Development JWT secret (valid for both dev and prod length requirements)
+      JWT_SECRET: ${JWT_SECRET:-RapidoSurDockerJWTSecretKey2025For DevelopmentAndProductionSixtyFourChars}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
 
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
@@ -77,11 +73,11 @@ services:
 
       ENABLE_CRON: ${ENABLE_CRON:-true}
       ALERTS_CRON_SCHEDULE: ${ALERTS_CRON_SCHEDULE:-0 6 * * *}
-      ENABLE_SEEDING: ${ENABLE_SEEDING:-false}
+      ENABLE_SEEDING: ${ENABLE_SEEDING:-true}
 
       LOG_LEVEL: ${LOG_LEVEL:-info}
       THROTTLE_TTL: ${THROTTLE_TTL:-60000}
-      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-10}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-1000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,7 +97,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'node -e "require(\"http\").get(\"http://localhost:3000/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"',
+          'node -e "require(\"http\").get(\"http://localhost:3000/api/health\", (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"',
         ]
       interval: 30s
       timeout: 10s
