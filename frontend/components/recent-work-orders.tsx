@@ -33,7 +33,7 @@ export function RecentWorkOrders() {
   const loadWorkOrders = async () => {
     try {
       const response = await api.workOrders.getAll()
-      const allOrders = response.data || []
+      const allOrders = response.data.items || []
       setWorkOrders(allOrders.slice(0, 5))
     } catch (error) {
       console.error("[v0] Error loading work orders:", error)
