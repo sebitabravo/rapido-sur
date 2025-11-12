@@ -1,25 +1,74 @@
 export interface User {
   id: number
-  username: string
   email: string
-  role: "ADMIN" | "SUPERVISOR" | "MECANICO"
-  nombre: string
+  rol: "Administrador" | "JefeMantenimiento" | "Mecanico"
+  nombreCompleto: string
+  activo?: boolean
 }
 
 export interface AuthResponse {
-  token: string
+  access_token: string
   user: User
 }
 
 const TOKEN_KEY = "rapido_sur_token"
 const USER_KEY = "rapido_sur_user"
+const AUTH_VERSION_KEY = "rapido_sur_auth_version"
+const CURRENT_AUTH_VERSION = "2.0" // Increment this when auth structure changes
+
+/**
+ * Migrate old user structure to new structure
+ */
+function migrateUser(oldUser: any): User {
+  // If already migrated, return as is
+  if (oldUser.rol) {
+    return oldUser as User
+  }
+
+  // Migrate old structure to new
+  return {
+    id: oldUser.id,
+    email: oldUser.email,
+    rol: oldUser.role || oldUser.rol || "Mecanico", // Map old 'role' to new 'rol'
+    nombreCompleto: oldUser.nombreCompleto || oldUser.nombre || oldUser.nombre_completo || "",
+    activo: oldUser.activo !== false,
+  }
+}
 
 export const authService = {
+  // Initialize auth service - migrates old data and clears incompatible data
+  init() {
+    if (typeof window !== "undefined") {
+      const storedVersion = localStorage.getItem(AUTH_VERSION_KEY)
+      
+      // If version mismatch, try to migrate user data
+      if (storedVersion !== CURRENT_AUTH_VERSION) {
+        const userStr = localStorage.getItem(USER_KEY)
+        if (userStr) {
+          try {
+            const oldUser = JSON.parse(userStr)
+            const migratedUser = migrateUser(oldUser)
+            // Re-save with migrated structure
+            localStorage.setItem(USER_KEY, JSON.stringify(migratedUser))
+            localStorage.setItem(AUTH_VERSION_KEY, CURRENT_AUTH_VERSION)
+          } catch (error) {
+            // If migration fails, clear auth data
+            this.clearAuth()
+            localStorage.setItem(AUTH_VERSION_KEY, CURRENT_AUTH_VERSION)
+          }
+        } else {
+          localStorage.setItem(AUTH_VERSION_KEY, CURRENT_AUTH_VERSION)
+        }
+      }
+    }
+  },
+
   // Save token and user to localStorage
   saveAuth(token: string, user: User) {
     if (typeof window !== "undefined") {
       localStorage.setItem(TOKEN_KEY, token)
       localStorage.setItem(USER_KEY, JSON.stringify(user))
+      localStorage.setItem(AUTH_VERSION_KEY, CURRENT_AUTH_VERSION)
     }
   },
 
@@ -35,7 +84,15 @@ export const authService = {
   getUser(): User | null {
     if (typeof window !== "undefined") {
       const userStr = localStorage.getItem(USER_KEY)
-      return userStr ? JSON.parse(userStr) : null
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr)
+          // Always apply migration in case data is outdated
+          return migrateUser(user)
+        } catch (error) {
+          return null
+        }
+      }
     }
     return null
   },
@@ -54,14 +111,14 @@ export const authService = {
   },
 
   // Check if user has specific role
-  hasRole(role: User["role"]): boolean {
+  hasRole(rol: User["rol"]): boolean {
     const user = this.getUser()
-    return user?.role === role
+    return user?.rol === rol
   },
 
   // Check if user has any of the specified roles
-  hasAnyRole(roles: User["role"][]): boolean {
+  hasAnyRole(roles: User["rol"][]): boolean {
     const user = this.getUser()
-    return user ? roles.includes(user.role) : false
+    return user ? roles.includes(user.rol) : false
   },
 }

@@ -5,7 +5,7 @@ interface User {
   id: number
   username: string
   email: string
-  role: "ADMIN" | "SUPERVISOR" | "MECANICO"
+  role: "Administrador" | "JefeMantenimiento" | "Mecanico"
   nombre: string
 }
 
@@ -45,12 +45,12 @@ export const useStore = create<AppState>()(
 
       hasRole: (role: User["role"]) => {
         const { user } = get()
-        return user?.role === role
+        return user?.rol === role
       },
 
       hasAnyRole: (roles: User["role"][]) => {
         const { user } = get()
-        return user ? roles.includes(user.role) : false
+        return user ? roles.includes(user.rol) : false
       },
 
       // Notification state
