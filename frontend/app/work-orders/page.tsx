@@ -86,14 +86,15 @@ export default function WorkOrdersPage() {
       }
 
       const response = await api.workOrders.getAll(params)
-      let orders = response.data || []
+      // Ensure orders is always an array
+      let orders = Array.isArray(response.data) ? response.data : (response.data?.items || [])
 
       // Client-side filtering for search term
       if (debouncedSearchTerm) {
         const searchLower = debouncedSearchTerm.toLowerCase()
         orders = orders.filter((order: WorkOrder) =>
-          order.vehiculo.patente.toLowerCase().includes(searchLower) ||
-          order.descripcion.toLowerCase().includes(searchLower)
+          order.vehiculo?.patente?.toLowerCase().includes(searchLower) ||
+          order.descripcion?.toLowerCase().includes(searchLower)
         )
       }
 

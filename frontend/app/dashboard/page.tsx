@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText, Package, Calendar } from "lucide-react"
+import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText, Package, Calendar, User } from "lucide-react"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { RecentWorkOrders } from "@/components/recent-work-orders"
 import { ActiveAlerts } from "@/components/active-alerts"
@@ -71,7 +71,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isAdmin = user?.role === "ADMIN"
+  const isAdmin = user?.rol === "Administrador"
 
   return (
     <div className="min-h-screen bg-background">
@@ -87,9 +87,9 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">{user?.nombre}</p>
+              <p className="text-sm font-medium">{user?.nombre_completo}</p>
               <Badge variant="outline" className="text-xs">
-                {user?.role}
+                {user?.rol}
               </Badge>
             </div>
             <Button 

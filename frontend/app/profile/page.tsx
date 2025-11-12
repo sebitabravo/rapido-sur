@@ -47,7 +47,7 @@ export default function ProfilePage() {
 
     if (user) {
       setProfileForm({
-        nombre_completo: user.nombre || "",
+        nombre_completo: user.nombre_completo || "",
         email: user.email || ""
       })
     }
@@ -188,7 +188,7 @@ export default function ProfilePage() {
               <div className="relative">
                 <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
                   <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
-                    {getInitials(user?.nombre || "U")}
+                    {getInitials(user?.nombre_completo || "U")}
                   </AvatarFallback>
                 </Avatar>
                 <Button
@@ -202,13 +202,13 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold mb-1">{user?.nombre}</h2>
+                <h2 className="text-2xl font-bold mb-1">{user?.nombre_completo}</h2>
                 <p className="text-muted-foreground mb-3">{user?.email}</p>
-                <Badge variant={getRoleBadgeVariant(user?.role || "")}>
-                  {user?.role === "Administrador" && "Administrador"}
-                  {user?.role === "JefeMantenimiento" && "Jefe de Mantenimiento"}
-                  {user?.role === "Mecanico" && "Mecánico"}
-                  {!user?.role && "Usuario"}
+                <Badge variant={getRoleBadgeVariant(user?.rol || "")}>
+                  {user?.rol === "Administrador" && "Administrador"}
+                  {user?.rol === "JefeMantenimiento" && "Jefe de Mantenimiento"}
+                  {user?.rol === "Mecanico" && "Mecánico"}
+                  {!user?.rol && "Usuario"}
                 </Badge>
               </div>
             </div>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
 
                   <div className="space-y-2">
                     <Label>Rol</Label>
-                    <Input value={user?.role || "Usuario"} disabled />
+                    <Input value={user?.rol || "Usuario"} disabled />
                     <p className="text-xs text-muted-foreground">
                       Asignado por administrador
                     </p>

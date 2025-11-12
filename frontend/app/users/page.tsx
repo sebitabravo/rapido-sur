@@ -20,18 +20,18 @@ import { toast } from "sonner"
 
 interface User {
   id: number
-  username: string
   email: string
-  nombre: string
-  role: "ADMIN" | "SUPERVISOR" | "MECANICO"
+  nombre_completo: string
+  rol: "Administrador" | "JefeMantenimiento" | "Mecanico"
+  activo: boolean
 }
 
 interface PaginatedResponse {
-  content: User[]
-  totalElements: number
+  items: User[]
+  total: number
   totalPages: number
+  page: number
   size: number
-  number: number
 }
 
 export default function UsersPage() {
@@ -61,7 +61,7 @@ export default function UsersPage() {
     }
 
     // Check if user is admin
-    if (!authService.hasRole("ADMIN")) {
+    if (!authService.hasRole("Administrador")) {
       toast.error("No tiene permisos para acceder a esta página")
       router.push("/dashboard")
       return
@@ -73,11 +73,7 @@ export default function UsersPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const params: any = {
-        page: currentPage,
-        size: pageSize,
-        sort: `${sortBy},${sortOrder}`,
-      }
+      const params: any = {}
 
       if (debouncedSearchTerm) {
         params.search = debouncedSearchTerm
@@ -88,11 +84,42 @@ export default function UsersPage() {
       }
 
       const response = await api.users.getAll(params)
-      const data: PaginatedResponse = response.data
+      
+      // Backend returns array directly, not paginated response
+      let allUsers: User[] = Array.isArray(response.data) ? response.data : response.data.items || []
+      
+      // Apply client-side filtering if needed
+      if (debouncedSearchTerm) {
+        const searchLower = debouncedSearchTerm.toLowerCase()
+        allUsers = allUsers.filter(
+          (u) =>
+            u.nombre_completo?.toLowerCase().includes(searchLower) ||
+            u.email?.toLowerCase().includes(searchLower)
+        )
+      }
+      
+      if (roleFilter !== "all") {
+        allUsers = allUsers.filter((u) => u.rol === roleFilter)
+      }
+      
+      // Apply client-side sorting
+      allUsers.sort((a, b) => {
+        const aVal = a[sortBy as keyof User] || ''
+        const bVal = b[sortBy as keyof User] || ''
+        const comparison = String(aVal).localeCompare(String(bVal))
+        return sortOrder === 'asc' ? comparison : -comparison
+      })
+      
+      // Calculate pagination
+      const total = allUsers.length
+      const pages = Math.ceil(total / pageSize)
+      const startIndex = currentPage * pageSize
+      const endIndex = startIndex + pageSize
+      const paginatedUsers = allUsers.slice(startIndex, endIndex)
 
-      setUsers(data.content || [])
-      setTotalPages(data.totalPages || 0)
-      setTotalItems(data.totalElements || 0)
+      setUsers(paginatedUsers)
+      setTotalPages(pages)
+      setTotalItems(total)
     } catch (error) {
       console.error("[v0] Error loading users:", error)
       toast.error("Error al cargar los usuarios")
@@ -160,16 +187,23 @@ export default function UsersPage() {
 
   const getRoleBadge = (role: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      ADMIN: "destructive",
-      SUPERVISOR: "default",
-      MECANICO: "secondary",
+      Administrador: "destructive",
+      JefeMantenimiento: "default",
+      Mecanico: "secondary",
     }
-    return <Badge variant={variants[role] || "outline"}>{role}</Badge>
+    
+    const labels: Record<string, string> = {
+      Administrador: "Administrador",
+      JefeMantenimiento: "Jefe de Mantenimiento",
+      Mecanico: "Mecánico",
+    }
+    
+    return <Badge variant={variants[role] || "outline"}>{labels[role] || role}</Badge>
   }
 
-  const adminCount = users.filter((u) => u.role === "ADMIN").length
-  const supervisorCount = users.filter((u) => u.role === "SUPERVISOR").length
-  const mecanicoCount = users.filter((u) => u.role === "MECANICO").length
+  const adminCount = users.filter((u) => u.rol === "Administrador").length
+  const jefeMantenimientoCount = users.filter((u) => u.rol === "JefeMantenimiento").length
+  const mecanicoCount = users.filter((u) => u.rol === "Mecanico").length
 
   return (
     <div className="min-h-screen bg-background">
@@ -215,10 +249,10 @@ export default function UsersPage() {
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Supervisores</CardTitle>
+              <CardTitle className="text-sm font-medium">Jefes de Mantenimiento</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{supervisorCount}</div>
+              <div className="text-2xl font-bold">{jefeMantenimientoCount}</div>
             </CardContent>
           </Card>
           <Card>
@@ -258,9 +292,9 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los roles</SelectItem>
-                  <SelectItem value="ADMIN">Administrador</SelectItem>
-                  <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                  <SelectItem value="MECANICO">Mecánico</SelectItem>
+                  <SelectItem value="Administrador">Administrador</SelectItem>
+                  <SelectItem value="JefeMantenimiento">Jefe de Mantenimiento</SelectItem>
+                  <SelectItem value="Mecanico">Mecánico</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -315,7 +349,7 @@ export default function UsersPage() {
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {user.nombre}
+                            {user.nombre_completo}
                             {user.id === currentUser?.id && (
                               <Badge variant="outline" className="text-xs">
                                 Tú
@@ -325,7 +359,7 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>{user.username}</TableCell>
                         <TableCell>{user.email}</TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
+                        <TableCell>{getRoleBadge(user.rol)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(user)}>
@@ -381,7 +415,7 @@ export default function UsersPage() {
               <div className="flex items-start gap-3 p-3 border rounded-lg">
                 <Shield className="h-5 w-5 text-primary mt-0.5" />
                 <div>
-                  <p className="font-medium text-sm">Supervisor</p>
+                  <p className="font-medium text-sm">Jefe de Mantenimiento</p>
                   <p className="text-xs text-muted-foreground">Gestión de vehículos, órdenes de trabajo y reportes</p>
                 </div>
               </div>
