@@ -20,6 +20,7 @@ import { DetalleRepuesto } from "../part-details/entities/detalle-repuesto.entit
 import { Repuesto } from "../parts/entities/repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
 import { CreateOrdenTrabajoDto } from "./dto/create-orden-trabajo.dto";
+import { UpdateOrdenTrabajoDto } from "./dto/update-orden-trabajo.dto";
 import { AsignarMecanicoDto } from "./dto/asignar-mecanico.dto";
 import {
   RegistrarTrabajoDto,
@@ -79,12 +80,64 @@ export class WorkOrdersService {
     const orden = this.otRepo.create({
       numero_ot: numeroOt,
       tipo: createDto.tipo,
+      prioridad: createDto.prioridad,
       descripcion: createDto.descripcion,
+      costo_estimado: createDto.costo_estimado,
       vehiculo,
       estado: EstadoOrdenTrabajo.Pendiente,
     });
 
     return this.otRepo.save(orden);
+  }
+
+  /**
+   * Update work order
+   * Only allows updating orders in Pendiente state
+   */
+  async update(
+    id: number,
+    updateDto: UpdateOrdenTrabajoDto,
+  ): Promise<OrdenTrabajo> {
+    const orden = await this.findOne(id);
+
+    // Validate state - only Pendiente orders can be updated
+    if (orden.estado !== EstadoOrdenTrabajo.Pendiente) {
+      throw new BadRequestException(
+        `No se puede modificar una orden en estado ${orden.estado}. Solo se pueden modificar órdenes en estado Pendiente.`,
+      );
+    }
+
+    // If vehicle is being changed, validate it exists
+    if (updateDto.vehiculo_id && updateDto.vehiculo_id !== orden.vehiculo.id) {
+      const vehiculo = await this.vehiculoRepo.findOne({
+        where: { id: updateDto.vehiculo_id },
+      });
+      if (!vehiculo) {
+        throw new NotFoundException("Vehículo no encontrado");
+      }
+      orden.vehiculo = vehiculo;
+    }
+
+    // Update fields if provided
+    if (updateDto.tipo !== undefined) {
+      orden.tipo = updateDto.tipo;
+    }
+    if (updateDto.prioridad !== undefined) {
+      orden.prioridad = updateDto.prioridad;
+    }
+    if (updateDto.descripcion !== undefined) {
+      orden.descripcion = updateDto.descripcion;
+    }
+    if (updateDto.costo_estimado !== undefined) {
+      orden.costo_estimado = updateDto.costo_estimado;
+    }
+
+    const updated = await this.otRepo.save(orden);
+    this.logger.log(
+      `Work order updated: ${updated.numero_ot} - Changes applied`,
+    );
+
+    return updated;
   }
 
   /**

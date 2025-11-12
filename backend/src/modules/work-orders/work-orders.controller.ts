@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Body,
   Param,
@@ -25,6 +26,7 @@ import {
 import { WorkOrdersService } from "./work-orders.service";
 import { OrdenTrabajo } from "./entities/orden-trabajo.entity";
 import { CreateOrdenTrabajoDto } from "./dto/create-orden-trabajo.dto";
+import { UpdateOrdenTrabajoDto } from "./dto/update-orden-trabajo.dto";
 import { AsignarMecanicoDto } from "./dto/asignar-mecanico.dto";
 import { RegistrarTrabajoDto } from "./dto/registrar-trabajo.dto";
 import { FilterOrdenTrabajoDto } from "./dto/filter-orden-trabajo.dto";
@@ -164,6 +166,39 @@ export class WorkOrdersController {
   @Get(":id")
   async findOne(@Param("id", ParseIntPipe) id: number): Promise<OrdenTrabajo> {
     return this.workOrdersService.findOne(id);
+  }
+
+  /**
+   * PUT /ordenes-trabajo/:id
+   * Update work order (Admin and Maintenance Manager only)
+   * Only allows updating orders in Pendiente state
+   */
+  @ApiOperation({
+    summary: "Actualizar orden de trabajo",
+    description:
+      "Actualiza los datos de una orden de trabajo. Solo se pueden actualizar órdenes en estado Pendiente. Solo Admin y Jefe de Mantenimiento.",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID de la orden de trabajo" })
+  @ApiBody({ type: UpdateOrdenTrabajoDto })
+  @ApiResponse({
+    status: 200,
+    description: "Orden de trabajo actualizada exitosamente",
+  })
+  @ApiForbiddenResponse({
+    description: "No tienes permisos para actualizar órdenes de trabajo",
+  })
+  @ApiBadRequestResponse({
+    description: "No se puede actualizar: la orden no está en estado Pendiente",
+  })
+  @ApiNotFoundResponse({ description: "Orden de trabajo no encontrada" })
+  @Put(":id")
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  async update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() updateDto: UpdateOrdenTrabajoDto,
+  ): Promise<OrdenTrabajo> {
+    return this.workOrdersService.update(id, updateDto);
   }
 
   /**
