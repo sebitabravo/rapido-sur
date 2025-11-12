@@ -1,5 +1,5 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe, Logger } from "@nestjs/common";
+import { ValidationPipe, Logger, BadRequestException } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
@@ -35,7 +35,7 @@ function validateEnvironment() {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
 
-  // Validate JWT_SECRET in production
+  // Validate JWT_SECRET only in production
   if (process.env.NODE_ENV === "production") {
     const jwtSecret = process.env.JWT_SECRET;
 
@@ -44,21 +44,28 @@ function validateEnvironment() {
       throw new Error("JWT_SECRET is required in production");
     }
 
-    // Check for insecure defaults or weak secrets
+    // In production, be strict about JWT_SECRET
     if (
       jwtSecret.includes("dev_") ||
       jwtSecret.includes("secret_key") ||
+      jwtSecret.includes("ONLY_FOR_DEV") ||
       jwtSecret.length < 64
     ) {
       logger.error("❌ JWT_SECRET is insecure in production environment");
       logger.error("Requirements:");
-      logger.error("  - Must NOT contain 'dev_' or 'secret_key'");
+      logger.error("  - Must NOT contain 'dev_', 'secret_key', or 'ONLY_FOR_DEV'");
       logger.error("  - Must be at least 64 characters long");
       logger.error("  - Should be a random, cryptographically secure string");
       throw new Error("Insecure JWT_SECRET in production");
     }
 
     logger.log("✅ JWT_SECRET validated for production");
+  } else {
+    // In development, just warn if JWT_SECRET is too short
+    const jwtSecret = process.env.JWT_SECRET;
+    if (jwtSecret && jwtSecret.length < 32) {
+      logger.warn("⚠️  JWT_SECRET is short for development (recommend 64+ chars)");
+    }
   }
 
   logger.log("✅ All required environment variables are set");
@@ -114,6 +121,17 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: {
+        enableImplicitConversion: true, // Habilita conversión automática de tipos
+      },
+      exceptionFactory: (errors) => {
+        const logger = new Logger("ValidationPipe");
+        logger.error("Validation failed:");
+        errors.forEach((err) => {
+          logger.error(`  ${err.property}: ${Object.values(err.constraints || {}).join(", ")}`);
+        });
+        return new BadRequestException(errors);
+      },
     }),
   );
 
