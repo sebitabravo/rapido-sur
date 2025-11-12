@@ -22,11 +22,10 @@ import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 
 const userSchema = z.object({
-  username: z.string().min(3, "El usuario debe tener al menos 3 caracteres"),
   email: z.string().email("Email inválido"),
-  nombre: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
+  nombre_completo: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").optional(),
-  role: z.enum(["ADMIN", "SUPERVISOR", "MECANICO"]),
+  rol: z.enum(["Administrador", "JefeMantenimiento", "Mecanico"]),
 })
 
 type UserFormData = z.infer<typeof userSchema>
@@ -52,32 +51,29 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
-      username: "",
       email: "",
-      nombre: "",
+      nombre_completo: "",
       password: "",
-      role: "MECANICO",
+      rol: "Mecanico",
     },
   })
 
-  const role = watch("role")
+  const rol = watch("rol")
 
   useEffect(() => {
     if (user) {
       reset({
-        username: user.username,
         email: user.email,
-        nombre: user.nombre,
+        nombre_completo: user.nombre_completo,
         password: "",
-        role: user.role,
+        rol: user.rol,
       })
     } else {
       reset({
-        username: "",
         email: "",
-        nombre: "",
+        nombre_completo: "",
         password: "",
-        role: "MECANICO",
+        rol: "Mecanico",
       })
     }
   }, [user, reset])
@@ -120,28 +116,16 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre Completo *</Label>
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="nombre_completo">Nombre Completo *</Label>
               <Input
-                id="nombre"
+                id="nombre_completo"
                 placeholder="Juan Pérez"
-                {...register("nombre")}
-                aria-invalid={!!errors.nombre}
+                {...register("nombre_completo")}
+                aria-invalid={!!errors.nombre_completo}
                 disabled={loading}
               />
-              {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuario *</Label>
-              <Input
-                id="username"
-                placeholder="jperez"
-                {...register("username")}
-                aria-invalid={!!errors.username}
-                disabled={loading || isEdit}
-              />
-              {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
+              {errors.nombre_completo && <p className="text-xs text-destructive">{errors.nombre_completo.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -158,18 +142,18 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Rol *</Label>
-              <Select value={role} onValueChange={(value) => setValue("role", value as any)} disabled={loading}>
-                <SelectTrigger id="role" className="w-full">
+              <Label htmlFor="rol">Rol *</Label>
+              <Select value={rol} onValueChange={(value) => setValue("rol", value as any)} disabled={loading}>
+                <SelectTrigger id="rol" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Administrador</SelectItem>
-                  <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                  <SelectItem value="MECANICO">Mecánico</SelectItem>
+                  <SelectItem value="Administrador">Administrador</SelectItem>
+                  <SelectItem value="JefeMantenimiento">Jefe de Mantenimiento</SelectItem>
+                  <SelectItem value="Mecanico">Mecánico</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
+              {errors.rol && <p className="text-xs text-destructive">{errors.rol.message}</p>}
             </div>
 
             <div className="space-y-2 col-span-2">

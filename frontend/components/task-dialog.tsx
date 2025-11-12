@@ -87,7 +87,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
 
   const loadUsers = async () => {
     try {
-      const response = await api.users.getAll({ role: "Mecanico" })
+      const response = await api.users.getMechanics()
       setUsers(response.data || [])
     } catch (error) {
       console.error("Error loading users:", error)
@@ -141,10 +141,16 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
 
   const handlePartChange = (index: number, field: keyof PartUsage, value: any) => {
     const updated = [...partUsages]
-    updated[index] = { ...updated[index], [field]: value }
+    
+    // Convert to number if it's repuesto_id or cantidad_usada
+    const convertedValue = (field === "repuesto_id" || field === "cantidad_usada") 
+      ? parseInt(value) || 0 
+      : value
+    
+    updated[index] = { ...updated[index], [field]: convertedValue }
     
     if (field === "repuesto_id") {
-      const part = parts.find(p => p.id === parseInt(value))
+      const part = parts.find(p => p.id === convertedValue)
       if (part) {
         updated[index].nombre = part.nombre
         updated[index].precio_unitario = part.precio_unitario
@@ -174,34 +180,46 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
         descripcion: formData.descripcion.trim(),
         fecha_vencimiento: formData.fecha_vencimiento || undefined,
         mecanico_asignado_id: formData.mecanico_asignado_id ? parseInt(formData.mecanico_asignado_id) : undefined,
-        completada: formData.completada,
         orden_trabajo_id: workOrderId
       }
 
       let taskId: number
+      let taskCreated = false
 
       if (task) {
         await api.tasks.update(task.id, data)
         taskId = task.id
+        taskCreated = true
         toast.success("Tarea actualizada exitosamente")
       } else {
         const response = await api.tasks.create(data)
         taskId = response.data.id
+        taskCreated = true
         toast.success("Tarea creada exitosamente")
       }
 
       // Save part usages
       for (const usage of partUsages) {
         if (usage.repuesto_id > 0 && usage.cantidad_usada > 0) {
-          await api.partDetails.create({
-            tarea_id: taskId,
-            repuesto_id: usage.repuesto_id,
-            cantidad_usada: usage.cantidad_usada
-          })
+          try {
+            const payload = {
+              tarea_id: Number(taskId),
+              repuesto_id: Number(usage.repuesto_id),
+              cantidad_usada: Number(usage.cantidad_usada)
+            }
+            console.log('📤 Sending part detail:', payload)
+            await api.partDetails.create(payload)
+          } catch (error: any) {
+            console.error("Error saving part detail:", error)
+            const message = error.response?.data?.message || `Error al guardar repuesto`
+            toast.error(message)
+          }
         }
       }
 
-      onSave()
+      if (taskCreated) {
+        onSave()
+      }
     } catch (error: any) {
       console.error("Error saving task:", error)
       const message = error.response?.data?.message || "Error al guardar la tarea"
@@ -249,7 +267,6 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
                     <SelectValue placeholder="Seleccione un mecánico" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin asignar</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id.toString()}>
                         {user.nombre_completo}

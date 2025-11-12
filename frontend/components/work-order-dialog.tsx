@@ -25,7 +25,9 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 const workOrderSchema = z.object({
   vehiculo_id: z.number().min(1, "Debe seleccionar un vehículo"),
   tipo: z.enum(["Preventivo", "Correctivo"]),
+  prioridad: z.enum(["BAJA", "MEDIA", "ALTA"]).optional(),
   descripcion: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  costo_estimado: z.number().min(0, "El costo estimado no puede ser negativo").optional(),
 })
 
 type WorkOrderFormData = z.infer<typeof workOrderSchema>
@@ -56,12 +58,15 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
     defaultValues: {
       vehiculo_id: 0,
       tipo: "Preventivo",
+      prioridad: "MEDIA",
       descripcion: "",
+      costo_estimado: undefined,
     },
   })
 
   const vehiculo_id = watch("vehiculo_id")
   const tipo = watch("tipo")
+  const prioridad = watch("prioridad")
 
   useEffect(() => {
     if (open) {
@@ -74,13 +79,17 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
       reset({
         vehiculo_id: workOrder.vehiculo.id,
         tipo: workOrder.tipo,
+        prioridad: workOrder.prioridad || "MEDIA",
         descripcion: workOrder.descripcion,
+        costo_estimado: workOrder.costoEstimado || undefined,
       })
     } else {
       reset({
         vehiculo_id: 0,
         tipo: "Preventivo",
+        prioridad: "MEDIA",
         descripcion: "",
+        costo_estimado: undefined,
       })
     }
   }, [workOrder, reset])
@@ -101,15 +110,21 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
 
   const handleConfirm = async () => {
     if (!pendingData) return
-    
+
     try {
       setLoading(true)
       setConfirmOpen(false)
-      
-      const payload = {
+
+      const payload: any = {
         vehiculo_id: pendingData.vehiculo_id,
         tipo: pendingData.tipo,
+        prioridad: pendingData.prioridad,
         descripcion: pendingData.descripcion,
+      }
+
+      // Only add optional fields if they have valid values
+      if (pendingData.costo_estimado && !isNaN(pendingData.costo_estimado)) {
+        payload.costo_estimado = pendingData.costo_estimado
       }
 
       if (isEdit) {
@@ -174,6 +189,36 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
                 </SelectContent>
               </Select>
               {errors.tipo && <p className="text-xs text-destructive">{errors.tipo.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="prioridad">Prioridad</Label>
+              <Select value={prioridad} onValueChange={(value) => setValue("prioridad", value as any)} disabled={loading}>
+                <SelectTrigger id="prioridad" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BAJA">Baja</SelectItem>
+                  <SelectItem value="MEDIA">Media</SelectItem>
+                  <SelectItem value="ALTA">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.prioridad && <p className="text-xs text-destructive">{errors.prioridad.message}</p>}
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="costo_estimado">Costo Estimado (opcional)</Label>
+              <Input
+                id="costo_estimado"
+                type="number"
+                placeholder="150000"
+                min="0"
+                step="1000"
+                {...register("costo_estimado", { valueAsNumber: true })}
+                aria-invalid={!!errors.costo_estimado}
+                disabled={loading}
+              />
+              {errors.costo_estimado && <p className="text-xs text-destructive">{errors.costo_estimado.message}</p>}
             </div>
 
             <div className="space-y-2 col-span-2">

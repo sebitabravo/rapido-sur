@@ -36,16 +36,20 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<any>(null)
+  const [mechanics, setMechanics] = useState<any[]>([])
+  const [selectedMechanic, setSelectedMechanic] = useState<string>("")
+  const [assigningMechanic, setAssigningMechanic] = useState(false)
 
   useEffect(() => {
     if (open && workOrder) {
       loadTasks()
+      loadMechanics()
     }
   }, [open, workOrder])
 
   const loadTasks = async () => {
     if (!workOrder) return
-    
+
     try {
       setLoadingTasks(true)
       const response = await api.tasks.getByWorkOrder(workOrder.id)
@@ -54,6 +58,15 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
       console.error("Error loading tasks:", error)
     } finally {
       setLoadingTasks(false)
+    }
+  }
+
+  const loadMechanics = async () => {
+    try {
+      const response = await api.users.getMechanics()
+      setMechanics(response.data || [])
+    } catch (error) {
+      console.error("Error loading mechanics:", error)
     }
   }
 
@@ -73,6 +86,23 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
       toast.error("Error al actualizar el estado")
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleAssignMechanic = async () => {
+    if (!selectedMechanic) return
+
+    try {
+      setAssigningMechanic(true)
+      await api.workOrders.assignMechanic(workOrder.id, Number.parseInt(selectedMechanic))
+      toast.success("Mecánico asignado correctamente")
+      onUpdate()
+      onOpenChange(false)
+    } catch (error) {
+      console.error("Error assigning mechanic:", error)
+      toast.error("Error al asignar mecánico")
+    } finally {
+      setAssigningMechanic(false)
     }
   }
 
@@ -197,12 +227,33 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
           </div>
 
           {/* Mechanic */}
-          {workOrder.mecanico && (
+          {workOrder.mecanico ? (
             <div className="flex items-start gap-3">
               <User className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm text-muted-foreground">Mecánico Asignado</p>
                 <p className="font-medium">{workOrder.mecanico.nombre}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="mechanic">Asignar Mecánico</Label>
+              <div className="flex items-center gap-2">
+                <Select value={selectedMechanic} onValueChange={setSelectedMechanic} disabled={assigningMechanic}>
+                  <SelectTrigger id="mechanic" className="flex-1">
+                    <SelectValue placeholder="Seleccione un mecánico" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mechanics.map((mechanic) => (
+                      <SelectItem key={mechanic.id} value={mechanic.id.toString()}>
+                        {mechanic.nombre_completo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAssignMechanic} disabled={!selectedMechanic || assigningMechanic}>
+                  {assigningMechanic ? "Asignando..." : "Asignar"}
+                </Button>
               </div>
             </div>
           )}
