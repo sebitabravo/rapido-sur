@@ -18,7 +18,11 @@ import {
   IsOptional,
   Min,
 } from "class-validator";
-import { TipoOrdenTrabajo, EstadoOrdenTrabajo } from "../../../common/enums";
+import {
+  TipoOrdenTrabajo,
+  EstadoOrdenTrabajo,
+  PrioridadOrdenTrabajo,
+} from "../../../common/enums";
 import { Vehiculo } from "../../vehicles/entities/vehiculo.entity";
 import { Usuario } from "../../users/entities/usuario.entity";
 import { Tarea } from "../../tasks/entities/tarea.entity";
@@ -58,6 +62,17 @@ export class OrdenTrabajo {
   tipo: TipoOrdenTrabajo;
 
   /**
+   * Work order priority - indicates urgency
+   */
+  @Column({
+    type: "enum",
+    enum: PrioridadOrdenTrabajo,
+    default: PrioridadOrdenTrabajo.MEDIA,
+  })
+  @IsEnum(PrioridadOrdenTrabajo)
+  prioridad: PrioridadOrdenTrabajo;
+
+  /**
    * Detailed description of work to be performed
    */
   @Column({ type: "text" })
@@ -84,6 +99,14 @@ export class OrdenTrabajo {
   fecha_creacion: Date;
 
   /**
+   * When the mechanic started working on the order
+   * Set when status changes to EnProgreso
+   */
+  @Column({ type: "timestamp", nullable: true })
+  @IsOptional()
+  fecha_inicio: Date;
+
+  /**
    * When the work order was closed/completed
    * Null if still open
    */
@@ -92,10 +115,58 @@ export class OrdenTrabajo {
   fecha_cierre: Date;
 
   /**
+   * Estimated cost of the work order
+   * Set by the maintenance manager when creating/assigning
+   */
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => (value ? parseFloat(value) : null),
+    },
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: "El costo estimado no puede ser negativo" })
+  costo_estimado: number;
+
+  /**
+   * Actual cost of the work order
+   * Calculated from parts and labor when closing
+   */
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => (value ? parseFloat(value) : null),
+    },
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: "El costo real no puede ser negativo" })
+  costo_real: number;
+
+  /**
    * Total cost of work order (parts + labor)
    * Calculated when closing the work order
+   * @deprecated Use costo_real instead - kept for backwards compatibility
    */
-  @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => (value ? parseFloat(value) : 0),
+    },
+  })
   @IsNumber()
   @Min(0, { message: "El costo total no puede ser negativo" })
   costo_total: number;
