@@ -15,7 +15,7 @@ export function useAuth() {
       const { token, user } = response.data
 
       setAuth(token, user)
-      toast.success(`Bienvenido, ${user.nombre}`)
+      toast.success(`Bienvenido, ${user.nombre_completo`)
       router.push("/dashboard")
       return true
     } catch (error) {

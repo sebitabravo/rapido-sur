@@ -48,9 +48,9 @@ export function useVehicles(options: UseVehiclesOptions = {}) {
       const response = await api.vehicles.getAll(params)
       const data = response.data
 
-      setVehicles(data.content || [])
+      setVehicles(data.items || [])
       setTotalPages(data.totalPages || 0)
-      setTotalItems(data.totalElements || 0)
+      setTotalItems(data.total || 0)
     } catch (err) {
       const error = err as Error
       setError(error)
