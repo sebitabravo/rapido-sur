@@ -43,7 +43,8 @@ services:
     container_name: rapido-sur-backend
     restart: always
     ports:
-      - "${PORT:-3000}:3000"
+      - "127.0.0.1:${PORT:-3000}:3000"
+      
     env_file:
       - ./backend/.env
     environment:
@@ -119,11 +120,11 @@ services:
     container_name: rapido-sur-frontend
     restart: always
     ports:
-      - "8080:3000"
+      - "127.0.0.1:8080:8080"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
       NODE_ENV: production
-      PORT: 3000
+      PORT: 8080
       HOSTNAME: "0.0.0.0"
     depends_on:
       backend:
@@ -139,7 +140,7 @@ services:
           cpus: "0.25"
           memory: 128M
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "netstat -an | grep 8080 > /dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
