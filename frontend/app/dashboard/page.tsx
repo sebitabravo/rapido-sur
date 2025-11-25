@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText } from "lucide-react"
+import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText, Package, Calendar, User } from "lucide-react"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { RecentWorkOrders } from "@/components/recent-work-orders"
 import { ActiveAlerts } from "@/components/active-alerts"
@@ -55,6 +55,14 @@ export default function DashboardPage() {
     router.push("/users")
   }
 
+  const handleNavigateToParts = () => {
+    router.push("/parts")
+  }
+
+  const handleNavigateToPreventivePlans = () => {
+    router.push("/preventive-plans")
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -63,7 +71,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isAdmin = user?.role === "ADMIN"
+  const isAdmin = user?.rol === "Administrador"
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,12 +86,21 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium">{user?.nombre}</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium">{user?.nombre_completo}</p>
               <Badge variant="outline" className="text-xs">
-                {user?.role}
+                {user?.rol}
               </Badge>
             </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => router.push("/profile")} 
+              title="Mi perfil"
+              className="relative"
+            >
+              <User className="h-5 w-5" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Cerrar sesión">
               <LogOut className="h-5 w-5" />
             </Button>
@@ -98,7 +115,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Resumen general del estado de la flota</p>
         </div>
 
-        <div className={`grid grid-cols-2 ${isAdmin ? "md:grid-cols-5" : "md:grid-cols-4"} gap-4 mb-6`}>
+        <div className={`grid grid-cols-2 ${isAdmin ? "md:grid-cols-7" : "md:grid-cols-6"} gap-4 mb-6`}>
           <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToVehicles}>
             <Truck className="h-6 w-6" />
             <span className="text-sm">Vehículos</span>
@@ -114,6 +131,14 @@ export default function DashboardPage() {
           <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToReports}>
             <FileText className="h-6 w-6" />
             <span className="text-sm">Reportes</span>
+          </Button>
+          <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToParts}>
+            <Package className="h-6 w-6" />
+            <span className="text-sm">Repuestos</span>
+          </Button>
+          <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToPreventivePlans}>
+            <Calendar className="h-6 w-6" />
+            <span className="text-sm">Planes</span>
           </Button>
           {isAdmin && (
             <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToUsers}>

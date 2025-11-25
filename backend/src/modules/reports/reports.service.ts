@@ -165,6 +165,7 @@ export class ReportsService {
   async getReporteMantenimientos(filters: FilterReportDto): Promise<any> {
     const { fecha_inicio, fecha_fin } = filters;
 
+    // Overall statistics
     const qb = this.otRepo
       .createQueryBuilder("ot")
       .select([
@@ -185,12 +186,56 @@ export class ReportsService {
 
     const datos = await qb.getRawMany();
 
+    // Monthly trends for the last 6 months
+    const qbTendencias = this.otRepo
+      .createQueryBuilder("ot")
+      .select([
+        "TO_CHAR(ot.fecha_creacion, 'YYYY-MM') AS mes",
+        "ot.tipo AS tipo",
+        "COUNT(ot.id) AS cantidad",
+      ])
+      .where("ot.estado = :estado", { estado: EstadoOrdenTrabajo.Finalizada })
+      .andWhere("ot.fecha_creacion >= CURRENT_DATE - INTERVAL '6 months'")
+      .groupBy("TO_CHAR(ot.fecha_creacion, 'YYYY-MM'), ot.tipo")
+      .orderBy("TO_CHAR(ot.fecha_creacion, 'YYYY-MM')", "ASC");
+
+    const tendencias = await qbTendencias.getRawMany();
+
+    // Transform monthly data into chart format
+    const mesesMap = new Map<string, { preventivo: number; correctivo: number }>();
+    
+    tendencias.forEach((item) => {
+      const mes = item.mes;
+      if (!mesesMap.has(mes)) {
+        mesesMap.set(mes, { preventivo: 0, correctivo: 0 });
+      }
+      const data = mesesMap.get(mes)!;
+      if (item.tipo === TipoOrdenTrabajo.Preventivo) {
+        data.preventivo = parseInt(item.cantidad);
+      } else {
+        data.correctivo = parseInt(item.cantidad);
+      }
+    });
+
+    // Convert to array format with month names
+    const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const tendenciasMensuales = Array.from(mesesMap.entries()).map(([mes, data]) => {
+      const [year, month] = mes.split('-');
+      const monthIndex = parseInt(month) - 1;
+      return {
+        mes: mesesNombres[monthIndex],
+        preventivo: data.preventivo,
+        correctivo: data.correctivo,
+      };
+    });
+
     return {
       preventivos:
         datos.find((d) => d.tipo === TipoOrdenTrabajo.Preventivo) || {},
       correctivos:
         datos.find((d) => d.tipo === TipoOrdenTrabajo.Correctivo) || {},
       total: datos.reduce((sum, d) => sum + parseInt(d.cantidad), 0),
+      tendencias_mensuales: tendenciasMensuales,
     };
   }
 

@@ -352,9 +352,34 @@ Multi-stage mandatory. Build stage: npm install, npm run build. Production stage
 
 ### Production Environment Variables
 - DB_HOST must point to postgres service within Docker network
-- JWT_SECRET different from development
+- JWT_SECRET different from development (MUST be at least 64 characters)
 - SMTP configured with real credentials
 - NODE_ENV=production
+
+**IMPORTANT - Automatic Validations:**
+The system now includes automatic validations that will prevent startup if configuration is incorrect:
+
+1. **JWT_SECRET Validation** (main.ts):
+   - In production, validates JWT_SECRET is at least 64 characters
+   - Rejects secrets containing 'dev_' or 'secret_key'
+   - Application will NOT start if JWT_SECRET is insecure
+   - Use `npm run secrets:generate` to create secure secrets
+
+2. **Required Environment Variables**:
+   - System checks all required variables on startup
+   - Missing variables will cause immediate failure with clear error message
+   - Required: DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE, JWT_SECRET, JWT_EXPIRATION, FRONTEND_URL
+
+3. **Health Checks with Database**:
+   - /health endpoint now verifies database connection
+   - Returns { status: "OK", database: "connected" } if healthy
+   - Returns { status: "DEGRADED", database: "disconnected" } if DB issues
+   - Docker healthchecks use this endpoint
+
+**Configuration Files:**
+- `.env.example` - Template for development
+- `.env.production.example` - Template for production (with detailed comments)
+- Use DEPLOYMENT_GUIDE.md for step-by-step deployment instructions
 
 ### Backups
 - Daily PostgreSQL backup script
@@ -408,10 +433,33 @@ When you encounter an error or bug:
 - [ ] Code was reviewed by at least one teammate
 - [ ] Documentation was updated if necessary
 
+## 📚 PROJECT DOCUMENTATION
+
+The project has streamlined documentation. Only these essential documents exist:
+
+**Main Documentation:**
+- **CLAUDE.md** (this file) - Complete project memory and architecture
+- **README.md** - Main documentation, quick start, and deployment guide
+- **DEPLOYMENT_GUIDE.md** - 15-minute Dokploy deployment guide
+- **DOCUMENTACION.md** - Guide explaining which document to use when
+
+**Technical Documentation:**
+- **docs/DATABASE_MODEL.md** - Complete database model with ER diagrams
+
+**Configuration Templates:**
+- **.env.example** - Development environment template
+- **.env.production.example** - Production environment template (for Dokploy)
+
+**Reading Flow:**
+- New developers: README.md → CLAUDE.md → DATABASE_MODEL.md
+- Deployment: DEPLOYMENT_GUIDE.md → .env.production.example
+- Daily development: CLAUDE.md (reference) + README.md (commands)
+- Confused about docs: DOCUMENTACION.md
+
 ---
 
-**Last updated**: October 2025
-**Document version**: 1.0
+**Last updated**: January 2025
+**Document version**: 2.0
 **Team**: Rubilar, Bravo, Loyola, Aguayo
 
 This document is the project's source of truth. When in doubt, consult here first. If anything in the code contradicts this document, the document is right and the code must be corrected.

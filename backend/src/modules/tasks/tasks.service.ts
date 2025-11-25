@@ -233,4 +233,15 @@ export class TasksService {
       relations: ["orden_trabajo", "mecanico_asignado", "detalles_repuestos"],
     });
   }
+
+  /**
+   * Find all tasks by work order ID
+   */
+  async findByWorkOrder(ordenTrabajoId: number): Promise<Tarea[]> {
+    return this.tareaRepository.find({
+      where: { orden_trabajo: { id: ordenTrabajoId } },
+      relations: ["mecanico_asignado", "detalles_repuestos", "detalles_repuestos.repuesto"],
+      order: { id: "ASC" },
+    });
+  }
 }

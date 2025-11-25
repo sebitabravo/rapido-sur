@@ -11,12 +11,14 @@ import { formatDate } from "@/lib/utils"
 
 interface Alert {
   id: number
-  tipo: string
+  tipo_alerta: string
   mensaje: string
-  prioridad: string
-  fechaCreacion: string
+  fecha_generacion: string
+  email_enviado: boolean
   vehiculo?: {
     patente: string
+    marca: string
+    modelo: string
   }
 }
 
@@ -31,9 +33,9 @@ export function ActiveAlerts() {
   const loadAlerts = async () => {
     try {
       const response = await api.alerts.getAll()
+      // Get all alerts (they are all "active" by definition - pending deletion when WO is created)
       const allAlerts = response.data || []
-      const activeAlerts = allAlerts.filter((alert: any) => alert.activa === true)
-      setAlerts(activeAlerts.slice(0, 5))
+      setAlerts(allAlerts.slice(0, 5))
     } catch (error) {
       console.error("[v0] Error loading alerts:", error)
     } finally {
@@ -53,13 +55,13 @@ export function ActiveAlerts() {
     // }
   }
 
-  const getPriorityColor = (prioridad: string) => {
-    const colors: Record<string, string> = {
-      ALTA: "text-destructive",
-      MEDIA: "text-orange-500",
-      BAJA: "text-yellow-500",
-    }
-    return colors[prioridad] || "text-muted-foreground"
+  const getAlertColor = (tipo: string) => {
+    // Kilometraje alerts are more critical than Fecha alerts
+    return tipo === "Kilometraje" ? "text-destructive" : "text-orange-500"
+  }
+  
+  const getAlertBadge = (tipo: string) => {
+    return tipo === "Kilometraje" ? "destructive" : "outline"
   }
 
   if (loading) {
@@ -99,18 +101,26 @@ export function ActiveAlerts() {
           <div className="space-y-3">
             {alerts.map((alert) => (
               <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                <AlertTriangle className={`h-5 w-5 mt-0.5 ${getPriorityColor(alert.prioridad)}`} />
+                <AlertTriangle className={`h-5 w-5 mt-0.5 ${getAlertColor(alert.tipo_alerta)}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant={alert.prioridad === "ALTA" ? "destructive" : "outline"} className="text-xs">
-                      {alert.prioridad}
+                    <Badge variant={getAlertBadge(alert.tipo_alerta)} className="text-xs">
+                      {alert.tipo_alerta}
                     </Badge>
-                    {alert.vehiculo && <span className="text-xs text-muted-foreground">{alert.vehiculo.patente}</span>}
+                    {alert.vehiculo && (
+                      <span className="text-xs text-muted-foreground">
+                        {alert.vehiculo.patente}
+                      </span>
+                    )}
+                    {!alert.email_enviado && (
+                      <Badge variant="secondary" className="text-xs">
+                        Nueva
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-sm font-medium">{alert.tipo.replace("_", " ")}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{alert.mensaje}</p>
+                  <p className="text-sm font-medium line-clamp-2">{alert.mensaje}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatDate(alert.fechaCreacion, "dd MMM yyyy HH:mm")}
+                    {formatDate(alert.fecha_generacion, "dd MMM yyyy HH:mm")}
                   </p>
                 </div>
                 <Button variant="ghost" size="icon-sm" onClick={() => handleDismiss(alert.id)} title="Descartar">

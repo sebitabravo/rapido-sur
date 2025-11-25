@@ -35,62 +35,70 @@ export class PartDetailsService {
    * 3. Stores historical price (precio_unitario_momento)
    * 4. Deducts stock
    * 5. Creates detail record
+   * All operations wrapped in database transaction for data consistency
    */
   async registerUsage(dto: RegisterUsageDto): Promise<DetalleRepuesto> {
-    // Validate task exists
-    const tarea = await this.tareaRepository.findOne({
-      where: { id: dto.tarea_id },
-      relations: ["orden_trabajo"],
-    });
-    if (!tarea) {
-      throw new NotFoundException("Tarea no encontrada");
-    }
+    return await this.detalleRepuestoRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        // Validate task exists
+        const tarea = await transactionalEntityManager.findOne(Tarea, {
+          where: { id: dto.tarea_id },
+          relations: ["orden_trabajo"],
+        });
+        if (!tarea) {
+          throw new NotFoundException("Tarea no encontrada");
+        }
 
-    // Validate task is not completed
-    if (tarea.completada) {
-      throw new BadRequestException(
-        "No se pueden agregar repuestos a una tarea completada",
-      );
-    }
+        // Validate task is not completed
+        if (tarea.completada) {
+          throw new BadRequestException(
+            "No se pueden agregar repuestos a una tarea completada",
+          );
+        }
 
-    // Validate part exists
-    const repuesto = await this.repuestoRepository.findOne({
-      where: { id: dto.repuesto_id },
-    });
-    if (!repuesto) {
-      throw new NotFoundException("Repuesto no encontrado");
-    }
+        // Validate part exists
+        const repuesto = await transactionalEntityManager.findOne(Repuesto, {
+          where: { id: dto.repuesto_id },
+        });
+        if (!repuesto) {
+          throw new NotFoundException("Repuesto no encontrado");
+        }
 
-    // Validate sufficient stock
-    if (repuesto.cantidad_stock < dto.cantidad_usada) {
-      throw new BadRequestException(
-        `Stock insuficiente para ${repuesto.nombre}. Disponible: ${repuesto.cantidad_stock}, Solicitado: ${dto.cantidad_usada}`,
-      );
-    }
+        // Validate sufficient stock
+        if (repuesto.cantidad_stock < dto.cantidad_usada) {
+          throw new BadRequestException(
+            `Stock insuficiente para ${repuesto.nombre}. Disponible: ${repuesto.cantidad_stock}, Solicitado: ${dto.cantidad_usada}`,
+          );
+        }
 
-    // CRITICAL: Store current price for historical accuracy
-    const precio_unitario_momento = repuesto.precio_unitario;
+        // CRITICAL: Store current price for historical accuracy
+        const precio_unitario_momento = repuesto.precio_unitario;
 
-    // Create detail record
-    const detalle = this.detalleRepuestoRepository.create({
-      tarea,
-      repuesto,
-      cantidad_usada: dto.cantidad_usada,
-      precio_unitario_momento,
-    });
+        // Create detail record
+        const detalle = transactionalEntityManager.create(DetalleRepuesto, {
+          tarea,
+          repuesto,
+          cantidad_usada: dto.cantidad_usada,
+          precio_unitario_momento,
+        });
 
-    // Save detail first (to ensure transaction integrity)
-    const savedDetalle = await this.detalleRepuestoRepository.save(detalle);
+        // Save detail record
+        const savedDetalle = await transactionalEntityManager.save(
+          DetalleRepuesto,
+          detalle,
+        );
 
-    // Deduct stock
-    repuesto.cantidad_stock -= dto.cantidad_usada;
-    await this.repuestoRepository.save(repuesto);
+        // Deduct stock atomically
+        repuesto.cantidad_stock -= dto.cantidad_usada;
+        await transactionalEntityManager.save(Repuesto, repuesto);
 
-    this.logger.log(
-      `Part usage registered: ${repuesto.codigo} x ${dto.cantidad_usada} for task ${tarea.id}. Price: $${precio_unitario_momento}`,
+        this.logger.log(
+          `Part usage registered: ${repuesto.codigo} x ${dto.cantidad_usada} for task ${tarea.id}. Price: $${precio_unitario_momento}`,
+        );
+
+        return savedDetalle;
+      },
     );
-
-    return savedDetalle;
   }
 
   /**

@@ -1,10 +1,14 @@
 import {
   Controller,
   Get,
+  Post,
+  Patch,
   Param,
+  Body,
   ParseIntPipe,
   UseGuards,
   NotFoundException,
+  Request,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -12,11 +16,15 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiBody,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
 } from "@nestjs/swagger";
 import { TasksService } from "./tasks.service";
 import { Tarea } from "./entities/tarea.entity";
+import { CreateTareaDto } from "./dto/create-tarea.dto";
+import { UpdateTareaDto } from "./dto/update-tarea.dto";
+import { MarkCompletedDto } from "./dto/mark-completed.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -59,6 +67,51 @@ export class TasksController {
   }
 
   /**
+   * POST /tareas
+   * Create a new task
+   */
+  @ApiOperation({
+    summary: "Crear nueva tarea",
+    description: "Crea una nueva tarea dentro de una orden de trabajo",
+  })
+  @ApiBody({ type: CreateTareaDto })
+  @ApiResponse({ status: 201, description: "Tarea creada exitosamente" })
+  @ApiResponse({ status: 400, description: "Datos inválidos" })
+  @ApiResponse({ status: 404, description: "Orden de trabajo no encontrada" })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Post()
+  async create(@Body() createDto: CreateTareaDto): Promise<Tarea> {
+    return this.tasksService.create(createDto);
+  }
+
+  /**
+   * GET /tareas/orden-trabajo/:ordenTrabajoId
+   * Get all tasks for a specific work order
+   */
+  @ApiOperation({
+    summary: "Obtener tareas de una orden de trabajo",
+    description:
+      "Obtiene todas las tareas asociadas a una orden de trabajo específica.",
+  })
+  @ApiParam({
+    name: "ordenTrabajoId",
+    type: Number,
+    description: "ID de la orden de trabajo",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Lista de tareas de la orden de trabajo",
+    isArray: true,
+  })
+  @Get("orden-trabajo/:ordenTrabajoId")
+  async findByWorkOrder(
+    @Param("ordenTrabajoId", ParseIntPipe) ordenTrabajoId: number,
+  ): Promise<Tarea[]> {
+    return this.tasksService.findByWorkOrder(ordenTrabajoId);
+  }
+
+  /**
    * GET /tareas/:id
    * Get a specific task by ID
    */
@@ -83,5 +136,47 @@ export class TasksController {
       throw new NotFoundException(`Tarea con ID ${id} no encontrada`);
     }
     return task;
+  }
+
+  /**
+   * PATCH /tareas/:id
+   * Update an existing task
+   */
+  @ApiOperation({
+    summary: "Actualizar tarea",
+    description: "Actualiza información de una tarea",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID de la tarea" })
+  @ApiBody({ type: UpdateTareaDto })
+  @ApiResponse({ status: 200, description: "Tarea actualizada" })
+  @ApiResponse({ status: 404, description: "Tarea no encontrada" })
+  @Patch(":id")
+  async update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() updateDto: UpdateTareaDto,
+    @Request() req: any,
+  ): Promise<Tarea> {
+    return this.tasksService.update(id, updateDto, req.user);
+  }
+
+  /**
+   * PATCH /tareas/:id/completar
+   * Mark a task as completed
+   */
+  @ApiOperation({
+    summary: "Marcar tarea como completada",
+    description: "Marca una tarea como completada",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID de la tarea" })
+  @ApiBody({ type: MarkCompletedDto })
+  @ApiResponse({ status: 200, description: "Tarea completada" })
+  @ApiResponse({ status: 404, description: "Tarea no encontrada" })
+  @Patch(":id/completar")
+  async markAsCompleted(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: MarkCompletedDto,
+    @Request() req: any,
+  ): Promise<Tarea> {
+    return this.tasksService.markAsCompleted(id, dto, req.user);
   }
 }

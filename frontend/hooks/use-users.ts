@@ -9,7 +9,7 @@ interface User {
   username: string
   email: string
   nombre: string
-  role: "ADMIN" | "SUPERVISOR" | "MECANICO"
+  role: "Administrador" | "JefeMantenimiento" | "Mecanico"
 }
 
 interface UseUsersOptions {
@@ -42,9 +42,9 @@ export function useUsers(options: UseUsersOptions = {}) {
       const response = await api.users.getAll(params)
       const data = response.data
 
-      setUsers(data.content || [])
+      setUsers(data.items || [])
       setTotalPages(data.totalPages || 0)
-      setTotalItems(data.totalElements || 0)
+      setTotalItems(data.total || 0)
     } catch (err) {
       const error = err as Error
       setError(error)

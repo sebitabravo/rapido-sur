@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Param, ParseIntPipe, UseGuards, Body } from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
@@ -7,7 +7,9 @@ import {
   ApiParam,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
+  ApiBody,
 } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import { AlertsService } from "./alerts.service";
 import { Alerta } from "./entities/alerta.entity";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -22,6 +24,7 @@ import { RolUsuario } from "../../common/enums";
 @ApiTags("Alerts")
 @ApiBearerAuth("JWT-auth")
 @ApiUnauthorizedResponse({ description: "Token inválido o expirado" })
+@SkipThrottle() // Dashboard loads alerts frequently, skip rate limiting
 @Controller("alertas")
 @UseGuards(JwtAuthGuard)
 export class AlertsController {
@@ -88,5 +91,87 @@ export class AlertsController {
     @Param("vehiculoId", ParseIntPipe) vehiculoId: number,
   ): Promise<Alerta[]> {
     return this.alertsService.findByVehiculo(vehiculoId);
+  }
+
+  /**
+   * POST /alertas/verificar-ahora
+   * Manually trigger alert verification (for MVP testing)
+   */
+  @ApiOperation({
+    summary: "Verificar alertas manualmente",
+    description: 
+      "Ejecuta la verificación de alertas preventivas de forma manual. " +
+      "Útil para MVP, testing y demos. Normalmente se ejecuta automáticamente a las 6 AM.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Verificación ejecutada correctamente",
+    schema: {
+      example: {
+        message: "Verificación de alertas ejecutada",
+        alertasGeneradas: 3,
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: "Solo Admin y Jefe pueden verificar alertas" })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Post("verificar-ahora")
+  async verificarAhora() {
+    const count = await this.alertsService.verificarAlertasPreventivas();
+    return {
+      message: "Verificación de alertas ejecutada correctamente",
+      alertasGeneradas: count,
+    };
+  }
+
+  /**
+   * POST /alertas/crear-prueba
+   * Create test alerts for MVP demonstration
+   */
+  @ApiOperation({
+    summary: "Crear alertas de prueba",
+    description:
+      "Crea alertas de prueba para demostración del MVP. " +
+      "Permite especificar patente del vehículo o crear alertas para todos los vehículos activos.",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        patente: {
+          type: "string",
+          description: "Patente del vehículo (opcional). Si no se proporciona, crea alertas para todos.",
+          example: "ABC123",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Alertas de prueba creadas",
+    schema: {
+      example: {
+        message: "Alertas de prueba creadas",
+        alertas: [
+          {
+            id: 1,
+            tipo_alerta: "Kilometraje",
+            mensaje: "ABC123 - Toyota Corolla: Mantenimiento en 500 km",
+          },
+        ],
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: "Solo Admin puede crear alertas de prueba" })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador)
+  @Post("crear-prueba")
+  async crearAlertasPrueba(@Body() body: { patente?: string }) {
+    const alertas = await this.alertsService.crearAlertasPrueba(body.patente);
+    return {
+      message: "Alertas de prueba creadas correctamente",
+      alertas,
+    };
   }
 }

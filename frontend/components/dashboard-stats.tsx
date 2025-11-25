@@ -36,10 +36,10 @@ export function DashboardStats() {
         api.alerts.getAll(),
       ])
 
-      // Backend returns paginated data for vehicles with 'items' property
+      // Backend returns paginated data for vehicles and work orders with 'items' property
       const vehicles = vehiclesRes.data.items || []
-      // Work orders and alerts return arrays directly
-      const workOrders = workOrdersRes.data || []
+      const workOrders = workOrdersRes.data.items || []
+      // Alerts return arrays directly
       const alerts = alertsRes.data || []
 
       // Calculate statistics

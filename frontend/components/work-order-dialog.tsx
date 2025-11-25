@@ -20,11 +20,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 const workOrderSchema = z.object({
   vehiculo_id: z.number().min(1, "Debe seleccionar un vehículo"),
   tipo: z.enum(["Preventivo", "Correctivo"]),
+  prioridad: z.enum(["BAJA", "MEDIA", "ALTA"]).optional(),
   descripcion: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  costo_estimado: z.number().min(0, "El costo estimado no puede ser negativo").optional(),
 })
 
 type WorkOrderFormData = z.infer<typeof workOrderSchema>
@@ -39,6 +42,8 @@ interface WorkOrderDialogProps {
 export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkOrderDialogProps) {
   const [loading, setLoading] = useState(false)
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingData, setPendingData] = useState<WorkOrderFormData | null>(null)
   const isEdit = !!workOrder
 
   const {
@@ -53,12 +58,15 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
     defaultValues: {
       vehiculo_id: 0,
       tipo: "Preventivo",
+      prioridad: "MEDIA",
       descripcion: "",
+      costo_estimado: undefined,
     },
   })
 
   const vehiculo_id = watch("vehiculo_id")
   const tipo = watch("tipo")
+  const prioridad = watch("prioridad")
 
   useEffect(() => {
     if (open) {
@@ -71,13 +79,17 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
       reset({
         vehiculo_id: workOrder.vehiculo.id,
         tipo: workOrder.tipo,
+        prioridad: workOrder.prioridad || "MEDIA",
         descripcion: workOrder.descripcion,
+        costo_estimado: workOrder.costoEstimado || undefined,
       })
     } else {
       reset({
         vehiculo_id: 0,
         tipo: "Preventivo",
+        prioridad: "MEDIA",
         descripcion: "",
+        costo_estimado: undefined,
       })
     }
   }, [workOrder, reset])
@@ -92,13 +104,27 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
   }
 
   const onSubmit = async (data: WorkOrderFormData) => {
+    setPendingData(data)
+    setConfirmOpen(true)
+  }
+
+  const handleConfirm = async () => {
+    if (!pendingData) return
+
     try {
       setLoading(true)
-      // Payload matches backend DTO exactly
-      const payload = {
-        vehiculo_id: data.vehiculo_id,
-        tipo: data.tipo,
-        descripcion: data.descripcion,
+      setConfirmOpen(false)
+
+      const payload: any = {
+        vehiculo_id: pendingData.vehiculo_id,
+        tipo: pendingData.tipo,
+        prioridad: pendingData.prioridad,
+        descripcion: pendingData.descripcion,
+      }
+
+      // Only add optional fields if they have valid values
+      if (pendingData.costo_estimado && !isNaN(pendingData.costo_estimado)) {
+        payload.costo_estimado = pendingData.costo_estimado
       }
 
       if (isEdit) {
@@ -109,8 +135,9 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
         toast.success("Orden de trabajo creada correctamente")
       }
       onSave()
+      setPendingData(null)
     } catch (error: any) {
-      console.error("[v0] Error saving work order:", error)
+      console.error("Error saving work order:", error)
       toast.error(error.response?.data?.message || "Error al guardar la orden de trabajo")
     } finally {
       setLoading(false)
@@ -164,6 +191,36 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
               {errors.tipo && <p className="text-xs text-destructive">{errors.tipo.message}</p>}
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="prioridad">Prioridad</Label>
+              <Select value={prioridad} onValueChange={(value) => setValue("prioridad", value as any)} disabled={loading}>
+                <SelectTrigger id="prioridad" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BAJA">Baja</SelectItem>
+                  <SelectItem value="MEDIA">Media</SelectItem>
+                  <SelectItem value="ALTA">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.prioridad && <p className="text-xs text-destructive">{errors.prioridad.message}</p>}
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="costo_estimado">Costo Estimado (opcional)</Label>
+              <Input
+                id="costo_estimado"
+                type="number"
+                placeholder="150000"
+                min="0"
+                step="1000"
+                {...register("costo_estimado", { valueAsNumber: true })}
+                aria-invalid={!!errors.costo_estimado}
+                disabled={loading}
+              />
+              {errors.costo_estimado && <p className="text-xs text-destructive">{errors.costo_estimado.message}</p>}
+            </div>
+
             <div className="space-y-2 col-span-2">
               <Label htmlFor="descripcion">Descripción *</Label>
               <Textarea
@@ -197,6 +254,20 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={handleConfirm}
+        title={isEdit ? "Confirmar Actualización" : "Confirmar Creación"}
+        description={
+          isEdit
+            ? "¿Está seguro que desea actualizar esta orden de trabajo? Los cambios se guardarán inmediatamente."
+            : "¿Está seguro que desea crear esta orden de trabajo? Se notificará al mecánico asignado."
+        }
+        confirmText={isEdit ? "Sí, Actualizar" : "Sí, Crear"}
+        cancelText="Cancelar"
+      />
     </Dialog>
   )
 }

@@ -43,7 +43,8 @@ export function useAlerts(options: UseAlertsOptions = {}) {
       if (activa !== undefined) params.activa = activa
 
       const response = await api.alerts.getAll(params)
-      setAlerts(response.data.content || [])
+      // Alerts endpoint returns direct array, not paginated response
+      setAlerts(response.data || [])
     } catch (err) {
       const error = err as Error
       setError(error)

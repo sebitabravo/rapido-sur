@@ -31,7 +31,7 @@ export class AlertsService {
    * Checks all active vehicles for preventive maintenance needs
    */
   @Cron("0 6 * * *")
-  async verificarAlertasPreventivas(): Promise<void> {
+  async verificarAlertasPreventivas(): Promise<number> {
     this.logger.log("[CRON] Verificando alertas preventivas...");
 
     // Get all active vehicles with their preventive plans
@@ -44,7 +44,8 @@ export class AlertsService {
     const vehiculoIds = vehiculos.map(v => v.id);
     const alertasExistentes = await this.alertaRepo
       .createQueryBuilder("alerta")
-      .where("alerta.vehiculoId IN (:...ids)", { ids: vehiculoIds })
+      .leftJoinAndSelect("alerta.vehiculo", "vehiculo")
+      .where("vehiculo.id IN (:...ids)", { ids: vehiculoIds })
       .andWhere("alerta.email_enviado = :enviado", { enviado: false })
       .getMany();
 
@@ -80,6 +81,7 @@ export class AlertsService {
     }
 
     this.logger.log(`[CRON] ${alertasGeneradas.length} alertas generadas`);
+    return alertasGeneradas.length;
   }
 
   /**
@@ -227,5 +229,64 @@ export class AlertsService {
       relations: ["vehiculo"],
       order: { fecha_generacion: "DESC" },
     });
+  }
+
+  /**
+   * Create test alerts for MVP demonstration
+   * @param patente - Optional vehicle license plate. If not provided, creates for all active vehicles
+   */
+  async crearAlertasPrueba(patente?: string): Promise<Alerta[]> {
+    this.logger.log(`[TEST] Creando alertas de prueba${patente ? ` para ${patente}` : ""}...`);
+
+    let vehiculos: Vehiculo[];
+
+    if (patente) {
+      // Create alert for specific vehicle
+      const vehiculo = await this.vehiculoRepo.findOne({
+        where: { patente },
+        relations: ["plan_preventivo"],
+      });
+
+      if (!vehiculo) {
+        throw new Error(`Vehículo con patente ${patente} no encontrado`);
+      }
+
+      vehiculos = [vehiculo];
+    } else {
+      // Create alerts for all active vehicles
+      vehiculos = await this.vehiculoRepo.find({
+        where: { estado: EstadoVehiculo.Activo },
+        relations: ["plan_preventivo"],
+      });
+    }
+
+    const alertasCreadas: Alerta[] = [];
+
+    for (const vehiculo of vehiculos) {
+      // Create test alert with generic message
+      const mensaje = vehiculo.plan_preventivo
+        ? vehiculo.plan_preventivo.tipo_intervalo === TipoIntervalo.KM
+          ? `${vehiculo.patente} - ${vehiculo.marca} ${vehiculo.modelo}: Mantenimiento en 500 km (PRUEBA)`
+          : `${vehiculo.patente} - ${vehiculo.marca} ${vehiculo.modelo}: Mantenimiento en 3 días (PRUEBA)`
+        : `${vehiculo.patente} - ${vehiculo.marca} ${vehiculo.modelo}: Alerta de prueba - Sin plan preventivo`;
+
+      const tipoAlerta = vehiculo.plan_preventivo?.tipo_intervalo === TipoIntervalo.Tiempo
+        ? TipoAlerta.Fecha
+        : TipoAlerta.Kilometraje;
+
+      const alerta = this.alertaRepo.create({
+        vehiculo,
+        tipo_alerta: tipoAlerta,
+        mensaje,
+        fecha_generacion: new Date(),
+        email_enviado: false, // Test alerts don't send emails by default
+      });
+
+      const alertaGuardada = await this.alertaRepo.save(alerta);
+      alertasCreadas.push(alertaGuardada);
+    }
+
+    this.logger.log(`[TEST] ${alertasCreadas.length} alertas de prueba creadas`);
+    return alertasCreadas;
   }
 }

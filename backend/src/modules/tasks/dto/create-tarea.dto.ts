@@ -16,6 +16,7 @@ export class CreateTareaDto {
    * Work order ID this task belongs to
    */
   @IsNotEmpty({ message: "La orden de trabajo es obligatoria" })
+  @Type(() => Number)
   @IsNumber()
   orden_trabajo_id: number;
 
@@ -23,6 +24,7 @@ export class CreateTareaDto {
    * Optional: Mechanic assigned to this task
    */
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   mecanico_asignado_id?: number;
 

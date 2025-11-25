@@ -8,6 +8,7 @@ import {
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
 } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Response } from "express";
 import { ReportsService } from "./reports.service";
 import { FilterReportDto } from "./dto/filter-report.dto";
@@ -24,6 +25,7 @@ import { RolUsuario } from "../../common/enums";
 @ApiBearerAuth("JWT-auth")
 @ApiUnauthorizedResponse({ description: "Token inválido o expirado" })
 @ApiForbiddenResponse({ description: "Solo Admin y Jefe pueden ver reportes" })
+@SkipThrottle() // Reports can make multiple requests, skip rate limiting
 @Controller("reportes")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)

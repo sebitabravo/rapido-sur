@@ -62,9 +62,9 @@ export function useWorkOrders(options: UseWorkOrdersOptions = {}) {
       const response = await api.workOrders.getAll(params)
       const data = response.data
 
-      setWorkOrders(data.content || [])
+      setWorkOrders(data.items || [])
       setTotalPages(data.totalPages || 0)
-      setTotalItems(data.totalElements || 0)
+      setTotalItems(data.total || 0)
     } catch (err) {
       const error = err as Error
       setError(error)

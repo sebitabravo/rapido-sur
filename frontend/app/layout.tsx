@@ -5,6 +5,7 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { OfflineIndicator } from "@/components/offline-indicator"
+import { AuthInitializer } from "@/components/auth-initializer"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <AuthInitializer />
         <ErrorBoundary>
           {children}
           <OfflineIndicator />

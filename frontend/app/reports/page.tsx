@@ -13,29 +13,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
-import { FileText, ArrowLeft, DollarSign, TrendingDown } from "lucide-react"
+import { FileText, ArrowLeft, DollarSign, TrendingDown, Download } from "lucide-react"
 import { toast } from "sonner"
 import { format, subMonths } from "date-fns"
+import { exportToCSV } from "@/lib/export-utils"
 
 interface UnavailabilityReport {
-  vehiculo: {
-    patente: string
-    marca: string
-    modelo: string
-  }
-  diasIndisponible: number
-  porcentajeIndisponibilidad: number
+  vehiculoId: number
+  patente: string
+  marca: string
+  modelo: string
+  totalOrdenes: number
+  diasInactividad: number
+  promedioDias: number
 }
 
 interface CostReport {
-  vehiculo: {
-    patente: string
-    marca: string
-    modelo: string
-  }
+  vehiculoId?: number
+  patente: string
+  totalOrdenes: number
   costoTotal: number
-  cantidadOrdenes: number
-  costoPromedio: number
 }
 
 export default function ReportsPage() {
@@ -95,8 +92,43 @@ export default function ReportsPage() {
     loadCostReport()
   }
 
-  const totalCost = costData.reduce((sum, item) => sum + item.costoTotal, 0)
-  const totalOrders = costData.reduce((sum, item) => sum + item.cantidadOrdenes, 0)
+  const handleExportUnavailability = () => {
+    if (unavailabilityData.length === 0) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+    
+    const exportData = unavailabilityData.map(item => ({
+      Patente: item.patente,
+      Marca: item.marca,
+      Modelo: item.modelo,
+      "Total Órdenes": item.totalOrdenes,
+      "Días Inactividad": item.diasInactividad || 0,
+      "Promedio Días": item.promedioDias ? parseFloat(item.promedioDias.toString()).toFixed(1) : "0.0"
+    }))
+    
+    exportToCSV(exportData, `reporte-indisponibilidad-${format(new Date(), "yyyy-MM-dd")}`)
+    toast.success("Reporte exportado exitosamente")
+  }
+
+  const handleExportCosts = () => {
+    if (costData.length === 0) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+    
+    const exportData = costData.map(item => ({
+      Patente: item.patente,
+      "Total Órdenes": item.totalOrdenes,
+      "Costo Total": item.costoTotal || 0
+    }))
+    
+    exportToCSV(exportData, `reporte-costos-${format(new Date(), "yyyy-MM-dd")}`)
+    toast.success("Reporte exportado exitosamente")
+  }
+
+  const totalCost = costData.reduce((sum, item) => sum + (parseFloat(item.costoTotal?.toString() || "0")), 0)
+  const totalOrders = costData.reduce((sum, item) => sum + parseInt(item.totalOrdenes?.toString() || "0"), 0)
   const avgCost = totalOrders > 0 ? totalCost / totalOrders : 0
 
   const COLORS = [
@@ -180,10 +212,18 @@ export default function ReportsPage() {
                     <CardTitle>Reporte de Indisponibilidad</CardTitle>
                     <CardDescription>Días que cada vehículo estuvo fuera de servicio</CardDescription>
                   </div>
-                  <Button onClick={handleGenerateUnavailabilityReport} disabled={loading}>
-                    <FileText className="h-4 w-4" />
-                    Generar Reporte
-                  </Button>
+                  <div className="flex gap-2">
+                    {unavailabilityData.length > 0 && (
+                      <Button onClick={handleExportUnavailability} variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Exportar CSV
+                      </Button>
+                    )}
+                    <Button onClick={handleGenerateUnavailabilityReport} disabled={loading}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -207,18 +247,18 @@ export default function ReportsPage() {
                       <ChartContainer
                         config={{
                           dias: {
-                            label: "Días Indisponible",
+                            label: "Días Inactividad",
                             color: "hsl(var(--destructive))",
                           },
                         }}
                       >
                         <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={unavailabilityData}>
+                          <BarChart data={unavailabilityData.slice(0, 10)}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="vehiculo.patente" className="text-xs" />
+                            <XAxis dataKey="patente" className="text-xs" />
                             <YAxis className="text-xs" />
                             <ChartTooltip content={<ChartTooltipContent />} />
-                            <Bar dataKey="diasIndisponible" fill="var(--color-dias)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="diasInactividad" fill="var(--color-dias)" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </ChartContainer>
@@ -228,21 +268,25 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Vehículo</TableHead>
+                          <TableHead>Patente</TableHead>
                           <TableHead>Marca/Modelo</TableHead>
-                          <TableHead className="text-right">Días Indisponible</TableHead>
-                          <TableHead className="text-right">Porcentaje</TableHead>
+                          <TableHead className="text-right">Total Órdenes</TableHead>
+                          <TableHead className="text-right">Días Inactividad</TableHead>
+                          <TableHead className="text-right">Promedio</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {unavailabilityData.map((item, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-medium">{item.vehiculo.patente}</TableCell>
+                            <TableCell className="font-medium">{item.patente}</TableCell>
                             <TableCell>
-                              {item.vehiculo.marca} {item.vehiculo.modelo}
+                              {item.marca} {item.modelo}
                             </TableCell>
-                            <TableCell className="text-right">{item.diasIndisponible} días</TableCell>
-                            <TableCell className="text-right">{item.porcentajeIndisponibilidad.toFixed(1)}%</TableCell>
+                            <TableCell className="text-right">{item.totalOrdenes}</TableCell>
+                            <TableCell className="text-right">{item.diasInactividad || 0} días</TableCell>
+                            <TableCell className="text-right">
+                              {item.promedioDias ? parseFloat(item.promedioDias.toString()).toFixed(1) : "0.0"} días
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -294,10 +338,18 @@ export default function ReportsPage() {
                     <CardTitle>Reporte de Costos</CardTitle>
                     <CardDescription>Costos de mantenimiento por vehículo</CardDescription>
                   </div>
-                  <Button onClick={handleGenerateCostReport} disabled={loading}>
-                    <FileText className="h-4 w-4" />
-                    Generar Reporte
-                  </Button>
+                  <div className="flex gap-2">
+                    {costData.length > 0 && (
+                      <Button onClick={handleExportCosts} variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Exportar CSV
+                      </Button>
+                    )}
+                    <Button onClick={handleGenerateCostReport} disabled={loading}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -330,9 +382,9 @@ export default function ReportsPage() {
                           }}
                         >
                           <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={costData}>
+                            <BarChart data={costData.slice(0, 10)}>
                               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                              <XAxis dataKey="vehiculo.patente" className="text-xs" />
+                              <XAxis dataKey="patente" className="text-xs" />
                               <YAxis className="text-xs" />
                               <ChartTooltip content={<ChartTooltipContent />} />
                               <Bar dataKey="costoTotal" fill="var(--color-costo)" radius={[4, 4, 0, 0]} />
@@ -347,19 +399,20 @@ export default function ReportsPage() {
                         <ResponsiveContainer width="100%" height={250}>
                           <PieChart>
                             <Pie
-                              data={costData}
+                              data={costData.slice(0, 5)}
                               dataKey="costoTotal"
-                              nameKey="vehiculo.patente"
+                              nameKey="patente"
                               cx="50%"
                               cy="50%"
                               outerRadius={80}
                               label
                             >
-                              {costData.map((entry, index) => (
+                              {costData.slice(0, 5).map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
                             <Legend />
+                            <ChartTooltip />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -369,26 +422,18 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Vehículo</TableHead>
-                          <TableHead>Marca/Modelo</TableHead>
-                          <TableHead className="text-right">Cantidad Órdenes</TableHead>
+                          <TableHead>Patente</TableHead>
+                          <TableHead className="text-right">Total Órdenes</TableHead>
                           <TableHead className="text-right">Costo Total</TableHead>
-                          <TableHead className="text-right">Costo Promedio</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {costData.map((item, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-medium">{item.vehiculo.patente}</TableCell>
-                            <TableCell>
-                              {item.vehiculo.marca} {item.vehiculo.modelo}
-                            </TableCell>
-                            <TableCell className="text-right">{item.cantidadOrdenes}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              ${item.costoTotal.toLocaleString()}
-                            </TableCell>
+                            <TableCell className="font-medium">{item.patente}</TableCell>
+                            <TableCell className="text-right">{item.totalOrdenes}</TableCell>
                             <TableCell className="text-right">
-                              ${item.costoPromedio.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                              ${parseFloat(item.costoTotal?.toString() || "0").toLocaleString("es-CL")}
                             </TableCell>
                           </TableRow>
                         ))}

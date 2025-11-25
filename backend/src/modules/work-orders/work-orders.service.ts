@@ -20,6 +20,7 @@ import { DetalleRepuesto } from "../part-details/entities/detalle-repuesto.entit
 import { Repuesto } from "../parts/entities/repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
 import { CreateOrdenTrabajoDto } from "./dto/create-orden-trabajo.dto";
+import { UpdateOrdenTrabajoDto } from "./dto/update-orden-trabajo.dto";
 import { AsignarMecanicoDto } from "./dto/asignar-mecanico.dto";
 import {
   RegistrarTrabajoDto,
@@ -79,12 +80,64 @@ export class WorkOrdersService {
     const orden = this.otRepo.create({
       numero_ot: numeroOt,
       tipo: createDto.tipo,
+      prioridad: createDto.prioridad,
       descripcion: createDto.descripcion,
+      costo_estimado: createDto.costo_estimado,
       vehiculo,
       estado: EstadoOrdenTrabajo.Pendiente,
     });
 
     return this.otRepo.save(orden);
+  }
+
+  /**
+   * Update work order
+   * Only allows updating orders in Pendiente state
+   */
+  async update(
+    id: number,
+    updateDto: UpdateOrdenTrabajoDto,
+  ): Promise<OrdenTrabajo> {
+    const orden = await this.findOne(id);
+
+    // Validate state - only Pendiente orders can be updated
+    if (orden.estado !== EstadoOrdenTrabajo.Pendiente) {
+      throw new BadRequestException(
+        `No se puede modificar una orden en estado ${orden.estado}. Solo se pueden modificar órdenes en estado Pendiente.`,
+      );
+    }
+
+    // If vehicle is being changed, validate it exists
+    if (updateDto.vehiculo_id && updateDto.vehiculo_id !== orden.vehiculo.id) {
+      const vehiculo = await this.vehiculoRepo.findOne({
+        where: { id: updateDto.vehiculo_id },
+      });
+      if (!vehiculo) {
+        throw new NotFoundException("Vehículo no encontrado");
+      }
+      orden.vehiculo = vehiculo;
+    }
+
+    // Update fields if provided
+    if (updateDto.tipo !== undefined) {
+      orden.tipo = updateDto.tipo;
+    }
+    if (updateDto.prioridad !== undefined) {
+      orden.prioridad = updateDto.prioridad;
+    }
+    if (updateDto.descripcion !== undefined) {
+      orden.descripcion = updateDto.descripcion;
+    }
+    if (updateDto.costo_estimado !== undefined) {
+      orden.costo_estimado = updateDto.costo_estimado;
+    }
+
+    const updated = await this.otRepo.save(orden);
+    this.logger.log(
+      `Work order updated: ${updated.numero_ot} - Changes applied`,
+    );
+
+    return updated;
   }
 
   /**
@@ -186,85 +239,101 @@ export class WorkOrdersService {
   /**
    * Close work order
    * Calculates costs and recalculates preventive plan
+   * All operations wrapped in database transaction for data consistency
    */
   async cerrar(id: number): Promise<OrdenTrabajo> {
-    const orden = await this.otRepo.findOne({
-      where: { id },
-      relations: [
-        "vehiculo",
-        "vehiculo.plan_preventivo",
-        "tareas",
-        "tareas.detalles_repuestos",
-      ],
-    });
+    return await this.otRepo.manager.transaction(
+      async (transactionalEntityManager) => {
+        const orden = await transactionalEntityManager.findOne(OrdenTrabajo, {
+          where: { id },
+          relations: [
+            "vehiculo",
+            "vehiculo.plan_preventivo",
+            "tareas",
+            "tareas.detalles_repuestos",
+          ],
+        });
 
-    if (!orden) {
-      throw new NotFoundException("Orden de trabajo no encontrada");
-    }
+        if (!orden) {
+          throw new NotFoundException("Orden de trabajo no encontrada");
+        }
 
-    // Validate state is EN_PROGRESO
-    if (orden.estado !== EstadoOrdenTrabajo.EnProgreso) {
-      throw new BadRequestException(
-        "Solo se pueden cerrar órdenes en progreso",
-      );
-    }
+        // Validate state is EN_PROGRESO
+        if (orden.estado !== EstadoOrdenTrabajo.EnProgreso) {
+          throw new BadRequestException(
+            "Solo se pueden cerrar órdenes en progreso",
+          );
+        }
 
-    // Validate all tasks are completed
-    const tareasIncompletas = orden.tareas.filter((t) => !t.completada);
-    if (tareasIncompletas.length > 0) {
-      throw new BadRequestException(
-        "No se puede cerrar la OT con tareas incompletas",
-      );
-    }
+        // Validate all tasks are completed
+        const tareasIncompletas = orden.tareas.filter((t) => !t.completada);
+        if (tareasIncompletas.length > 0) {
+          throw new BadRequestException(
+            "No se puede cerrar la OT con tareas incompletas",
+          );
+        }
 
-    // Calculate total cost (parts + labor)
-    // 1. Parts cost
-    const todosLosDetalles = orden.tareas.flatMap((t) => t.detalles_repuestos || []);
-    const costoRepuestos = todosLosDetalles.reduce(
-      (sum, detalle) =>
-        sum + detalle.cantidad_usada * detalle.precio_unitario_momento,
-      0,
+        // Calculate total cost (parts + labor)
+        // 1. Parts cost
+        const todosLosDetalles = orden.tareas.flatMap(
+          (t) => t.detalles_repuestos || [],
+        );
+        const costoRepuestos = todosLosDetalles.reduce(
+          (sum, detalle) =>
+            sum + detalle.cantidad_usada * detalle.precio_unitario_momento,
+          0,
+        );
+
+        // 2. Labor cost (hours worked * hourly rate)
+        const laborCostPerHour = this.configService.get<number>(
+          "LABOR_COST_PER_HOUR",
+          15000,
+        );
+        const totalHorasTrabajadas = orden.tareas.reduce(
+          (sum, tarea) => sum + (tarea.horas_trabajadas || 0),
+          0,
+        );
+        const costoManoObra = totalHorasTrabajadas * laborCostPerHour;
+
+        this.logger.log(
+          `Costo calculado para OT ${orden.numero_ot}: Repuestos=${costoRepuestos} CLP, Mano de obra=${costoManoObra} CLP (${totalHorasTrabajadas}h * ${laborCostPerHour} CLP/h)`,
+        );
+
+        orden.costo_total = costoRepuestos + costoManoObra;
+
+        // Set close date
+        orden.fecha_cierre = new Date();
+
+        // If PREVENTIVO, recalculate next maintenance
+        if (
+          orden.tipo === TipoOrdenTrabajo.Preventivo &&
+          orden.vehiculo.plan_preventivo
+        ) {
+          await this.recalcularPlanPreventivoTransactional(
+            orden.vehiculo,
+            transactionalEntityManager,
+          );
+        }
+
+        // Mark vehicle as available
+        orden.vehiculo.estado = EstadoVehiculo.Activo;
+        orden.vehiculo.ultima_revision = new Date();
+        await transactionalEntityManager.save(Vehiculo, orden.vehiculo);
+
+        // Change state to FINALIZADA
+        orden.estado = EstadoOrdenTrabajo.Finalizada;
+
+        const saved = await transactionalEntityManager.save(
+          OrdenTrabajo,
+          orden,
+        );
+        this.logger.log(
+          `Work order closed: ${saved.numero_ot} for vehicle ${saved.vehiculo.patente} - Type: ${saved.tipo}, Cost: $${saved.costo_total}`,
+        );
+
+        return saved;
+      },
     );
-
-    // 2. Labor cost (hours worked * hourly rate)
-    const laborCostPerHour = this.configService.get<number>("LABOR_COST_PER_HOUR", 15000);
-    const totalHorasTrabajadas = orden.tareas.reduce(
-      (sum, tarea) => sum + (tarea.horas_trabajadas || 0),
-      0,
-    );
-    const costoManoObra = totalHorasTrabajadas * laborCostPerHour;
-
-    this.logger.log(
-      `Costo calculado para OT ${orden.numero_ot}: Repuestos=${costoRepuestos} CLP, Mano de obra=${costoManoObra} CLP (${totalHorasTrabajadas}h * ${laborCostPerHour} CLP/h)`
-    );
-
-    orden.costo_total = costoRepuestos + costoManoObra;
-
-    // Set close date
-    orden.fecha_cierre = new Date();
-
-    // If PREVENTIVO, recalculate next maintenance
-    if (
-      orden.tipo === TipoOrdenTrabajo.Preventivo &&
-      orden.vehiculo.plan_preventivo
-    ) {
-      await this.recalcularPlanPreventivo(orden.vehiculo);
-    }
-
-    // Mark vehicle as available
-    orden.vehiculo.estado = EstadoVehiculo.Activo;
-    orden.vehiculo.ultima_revision = new Date();
-    await this.vehiculoRepo.save(orden.vehiculo);
-
-    // Change state to FINALIZADA
-    orden.estado = EstadoOrdenTrabajo.Finalizada;
-
-    const saved = await this.otRepo.save(orden);
-    this.logger.log(
-      `Work order closed: ${saved.numero_ot} for vehicle ${saved.vehiculo.patente} - Type: ${saved.tipo}, Cost: $${saved.costo_total}`,
-    );
-
-    return saved;
   }
 
   /**
@@ -372,48 +441,53 @@ export class WorkOrdersService {
 
   /**
    * Add part to work order and deduct stock
+   * Wrapped in transaction for data consistency
    */
   private async agregarRepuesto(
     orden: OrdenTrabajo,
     repuestoDto: RepuestoUsadoDto,
   ): Promise<void> {
-    // Find part
-    const repuesto = await this.repuestoRepo.findOne({
-      where: { id: repuestoDto.repuesto_id },
-    });
-    if (!repuesto) {
-      throw new NotFoundException(
-        `Repuesto ${repuestoDto.repuesto_id} no encontrado`,
-      );
-    }
+    await this.detalleRepo.manager.transaction(
+      async (transactionalEntityManager) => {
+        // Find part
+        const repuesto = await transactionalEntityManager.findOne(Repuesto, {
+          where: { id: repuestoDto.repuesto_id },
+        });
+        if (!repuesto) {
+          throw new NotFoundException(
+            `Repuesto ${repuestoDto.repuesto_id} no encontrado`,
+          );
+        }
 
-    // Validate available stock
-    if (repuesto.cantidad_stock < repuestoDto.cantidad) {
-      throw new BadRequestException(
-        `Stock insuficiente para ${repuesto.nombre}. Disponible: ${repuesto.cantidad_stock}`,
-      );
-    }
+        // Validate available stock
+        if (repuesto.cantidad_stock < repuestoDto.cantidad) {
+          throw new BadRequestException(
+            `Stock insuficiente para ${repuesto.nombre}. Disponible: ${repuesto.cantidad_stock}`,
+          );
+        }
 
-    // Find tarea
-    const tarea = await this.tareaRepo.findOne({
-      where: { id: repuestoDto.tarea_id },
-    });
-    if (!tarea) {
-      throw new NotFoundException("Tarea no encontrada");
-    }
+        // Find tarea
+        const tarea = await transactionalEntityManager.findOne(Tarea, {
+          where: { id: repuestoDto.tarea_id },
+        });
+        if (!tarea) {
+          throw new NotFoundException("Tarea no encontrada");
+        }
 
-    // Create detail with current price
-    const detalle = this.detalleRepo.create({
-      tarea,
-      repuesto,
-      cantidad_usada: repuestoDto.cantidad,
-      precio_unitario_momento: repuesto.precio_unitario,
-    });
-    await this.detalleRepo.save(detalle);
+        // Create detail with current price
+        const detalle = transactionalEntityManager.create(DetalleRepuesto, {
+          tarea,
+          repuesto,
+          cantidad_usada: repuestoDto.cantidad,
+          precio_unitario_momento: repuesto.precio_unitario,
+        });
+        await transactionalEntityManager.save(DetalleRepuesto, detalle);
 
-    // Deduct stock
-    repuesto.cantidad_stock -= repuestoDto.cantidad;
-    await this.repuestoRepo.save(repuesto);
+        // Deduct stock atomically
+        repuesto.cantidad_stock -= repuestoDto.cantidad;
+        await transactionalEntityManager.save(Repuesto, repuesto);
+      },
+    );
   }
 
   /**
@@ -434,6 +508,29 @@ export class WorkOrdersService {
     }
 
     await this.planRepo.save(plan);
+  }
+
+  /**
+   * Recalculate preventive plan within transaction
+   */
+  private async recalcularPlanPreventivoTransactional(
+    vehiculo: Vehiculo,
+    transactionalEntityManager: any,
+  ): Promise<void> {
+    const plan = vehiculo.plan_preventivo;
+    if (!plan) return;
+
+    if (plan.tipo_intervalo === TipoIntervalo.KM) {
+      // Calculate next km: current + interval
+      plan.proximo_kilometraje = vehiculo.kilometraje_actual + plan.intervalo;
+    } else if (plan.tipo_intervalo === TipoIntervalo.Tiempo) {
+      // Calculate next date: today + interval (days)
+      const proximaFecha = new Date();
+      proximaFecha.setDate(proximaFecha.getDate() + plan.intervalo);
+      plan.proxima_fecha = proximaFecha;
+    }
+
+    await transactionalEntityManager.save(PlanPreventivo, plan);
   }
 
   /**

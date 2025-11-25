@@ -19,6 +19,13 @@ import { AlertsModule } from "./modules/alerts/alerts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SeedingService } from "./database/seeding.service";
 import { Usuario } from "./modules/users/entities/usuario.entity";
+import { Vehiculo } from "./modules/vehicles/entities/vehiculo.entity";
+import { PlanPreventivo } from "./modules/preventive-plans/entities/plan-preventivo.entity";
+import { OrdenTrabajo } from "./modules/work-orders/entities/orden-trabajo.entity";
+import { Tarea } from "./modules/tasks/entities/tarea.entity";
+import { Repuesto } from "./modules/parts/entities/repuesto.entity";
+import { DetalleRepuesto } from "./modules/part-details/entities/detalle-repuesto.entity";
+import { Alerta } from "./modules/alerts/entities/alerta.entity";
 
 @Module({
   imports: [
@@ -85,8 +92,17 @@ import { Usuario } from "./modules/users/entities/usuario.entity";
     PartDetailsModule,
     AlertsModule,
     ReportsModule,
-    // Import Usuario entity for seeding
-    TypeOrmModule.forFeature([Usuario]),
+    // Import entities for seeding service
+    TypeOrmModule.forFeature([
+      Usuario,
+      Vehiculo,
+      PlanPreventivo,
+      OrdenTrabajo,
+      Tarea,
+      Repuesto,
+      DetalleRepuesto,
+      Alerta,
+    ]),
   ],
   controllers: [AppController],
   providers: [

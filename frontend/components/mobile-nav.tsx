@@ -22,7 +22,7 @@ export function MobileNav() {
     { href: "/reports", label: "Reportes", icon: BarChart3 },
   ]
 
-  if (hasRole("ADMIN")) {
+  if (hasRole("Administrador")) {
     navItems.push({ href: "/users", label: "Usuarios", icon: Users })
   }
 
@@ -40,8 +40,8 @@ export function MobileNav() {
         <div className="flex flex-col gap-4 mt-6">
           {user && (
             <div className="pb-4 border-b">
-              <p className="font-medium">{user.nombre}</p>
-              <p className="text-sm text-muted-foreground">{user.role}</p>
+              <p className="font-medium">{user.nombre_completo}</p>
+              <p className="text-sm text-muted-foreground">{user.rol}</p>
             </div>
           )}
           <nav className="flex flex-col gap-2">

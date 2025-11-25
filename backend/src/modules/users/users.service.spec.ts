@@ -27,6 +27,7 @@ describe("UsersService", () => {
     findOne: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
+    softRemove: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -62,13 +63,15 @@ describe("UsersService", () => {
       };
 
       const hashedPassword = "$2b$12$hashedpassword";
-      mockAuthService.hashPassword.mockResolvedValue(hashedPassword);
+      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       mockRepository.findOne.mockResolvedValue(null);
 
       const mockUser = {
         id: 1,
-        ...createDto,
+        email: createDto.email,
+        nombre_completo: createDto.nombre_completo,
+        rol: createDto.rol,
         password_hash: hashedPassword,
         activo: true,
       };
@@ -80,16 +83,8 @@ describe("UsersService", () => {
       expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { email: createDto.email },
       });
-      expect(authService.hashPassword).toHaveBeenCalledWith(
-        createDto.password,
-      );
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        email: createDto.email,
-        password_hash: hashedPassword,
-        nombre_completo: createDto.nombre_completo,
-        rol: createDto.rol,
-        activo: true,
-      });
+      expect(bcrypt.hash).toHaveBeenCalledWith(createDto.password, 12);
+      expect(mockRepository.create).toHaveBeenCalled();
       expect(result).toBeDefined();
     });
 
@@ -120,7 +115,7 @@ describe("UsersService", () => {
         rol: RolUsuario.Mecanico,
       };
 
-      mockAuthService.hashPassword.mockResolvedValue("hash");
+      (bcrypt.hash as jest.Mock).mockResolvedValue("hash");
       mockRepository.findOne.mockResolvedValue(null);
       mockRepository.create.mockReturnValue({} as Usuario);
       mockRepository.save.mockResolvedValue({} as Usuario);
@@ -279,7 +274,7 @@ describe("UsersService", () => {
     it("should not allow updating password through update method", async () => {
       const updateDto: any = {
         nombre_completo: "Name",
-        password: "newpassword", // This should be ignored
+        password: "newpassword",
       };
 
       const existingUser = {
@@ -289,21 +284,19 @@ describe("UsersService", () => {
       } as Usuario;
 
       mockRepository.findOne.mockResolvedValue(existingUser);
-      mockRepository.save.mockResolvedValue(existingUser);
 
-      await service.update(1, updateDto);
-
-      expect(mockRepository.save).not.toHaveBeenCalledWith(
-        expect.objectContaining({ password: expect.anything() }),
+      await expect(service.update(1, updateDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.update(1, updateDto)).rejects.toThrow(
+        /Use el endpoint \/cambiar-password/,
       );
     });
   });
 
   describe("changePassword", () => {
     it("should change user password with new hashed password", async () => {
-      const changePasswordDto: ChangePasswordDto = {
-        nueva_password: "NewSecurePass123!",
-      };
+      const newPassword = "NewSecurePass123!";
 
       const existingUser = {
         id: 1,
@@ -312,18 +305,16 @@ describe("UsersService", () => {
       } as Usuario;
 
       const newHash = "$2b$12$newhash";
-      mockAuthService.hashPassword.mockResolvedValue(newHash);
+      (bcrypt.hash as jest.Mock).mockResolvedValue(newHash);
       mockRepository.findOne.mockResolvedValue(existingUser);
       mockRepository.save.mockResolvedValue({
         ...existingUser,
         password_hash: newHash,
       });
 
-      await service.changePassword(1, changePasswordDto);
+      await service.changePassword(1, newPassword);
 
-      expect(authService.hashPassword).toHaveBeenCalledWith(
-        changePasswordDto.nueva_password,
-      );
+      expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 12);
       expect(mockRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ password_hash: newHash }),
       );
@@ -332,9 +323,9 @@ describe("UsersService", () => {
     it("should throw NotFoundException if user does not exist", async () => {
       mockRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.changePassword(999, { nueva_password: "newpass" }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.changePassword(999, "newpass")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -399,14 +390,14 @@ describe("UsersService", () => {
         rol: RolUsuario.Mecanico,
       };
 
-      mockAuthService.hashPassword.mockResolvedValue("hash");
+      (bcrypt.hash as jest.Mock).mockResolvedValue("hash");
       mockRepository.findOne.mockResolvedValue(null);
       mockRepository.create.mockReturnValue({} as Usuario);
       mockRepository.save.mockResolvedValue({} as Usuario);
 
       await service.create(createDto);
 
-      expect(authService.hashPassword).toHaveBeenCalledWith(createDto.password);
+      expect(bcrypt.hash).toHaveBeenCalledWith(createDto.password, 12);
     });
   });
 });

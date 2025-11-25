@@ -31,11 +31,11 @@ interface Vehicle {
 }
 
 interface PaginatedResponse {
-  content: Vehicle[]
-  totalElements: number
+  items: Vehicle[]
+  total: number
   totalPages: number
+  page: number
   size: number
-  number: number
 }
 
 export default function VehiclesPage() {
@@ -85,7 +85,7 @@ export default function VehiclesPage() {
       const data = response.data
 
       setVehicles(data.items || [])
-      setTotalPages(data.lastPage || 0)
+      setTotalPages(data.totalPages || 0)
       setTotalItems(data.total || 0)
     } catch (error) {
       console.error("[v0] Error loading vehicles:", error)
