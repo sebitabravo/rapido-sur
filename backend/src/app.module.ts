@@ -44,6 +44,9 @@ import { Alerta } from "./modules/alerts/entities/alerta.entity";
         database: configService.get("DB_DATABASE"),
         entities: [__dirname + "/**/*.entity{.ts,.js}"],
 
+        // Migration files location
+        migrations: [__dirname + "/database/migrations/*{.ts,.js}"],
+
         // IMPORTANT: Use migrations in production, not synchronize
         // synchronize: true drops tables and recreates them, losing data
         synchronize: configService.get("NODE_ENV") === "development",
