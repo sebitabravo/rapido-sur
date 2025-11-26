@@ -4,14 +4,14 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev -p 8080",
+    "dev": "next dev -p ${PORT:-3000}",
     "docker:build": "docker build -t rapido-sur-frontend:latest .",
     "docker:compose:down": "docker-compose down",
     "docker:compose:logs": "docker-compose logs -f",
     "docker:compose:up": "docker-compose up -d",
-    "docker:run": "docker run -p 8080:3000 rapido-sur-frontend:latest",
+    "docker:run": "docker run -p 3000:3000 rapido-sur-frontend:latest",
     "lint": "eslint .",
-    "start": "next start -p 8080"
+    "start": "next start"
   },
   "dependencies": {
     "@hookform/resolvers": "latest",

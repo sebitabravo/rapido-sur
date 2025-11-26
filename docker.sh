@@ -80,8 +80,8 @@ case "${1:-help}" in
         success "Servicios levantados"
         echo ""
         info "Acceso:"
-        echo "  Frontend: ${GREEN}http://localhost:8080${NC}"
-        echo "  Backend:  ${GREEN}http://localhost:3000${NC}"
+        echo "  Frontend: ${GREEN}http://localhost:${FRONTEND_PORT:-3000}${NC}"
+        echo "  Backend:  ${GREEN}http://localhost:${BACKEND_PORT:-3000}${NC}"
         echo "  Database: ${GREEN}localhost:5432${NC}"
         ;;
     
