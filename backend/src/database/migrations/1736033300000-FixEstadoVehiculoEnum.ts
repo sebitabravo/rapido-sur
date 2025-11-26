@@ -12,14 +12,16 @@ export class FixEstadoVehiculoEnum1736033300000 implements MigrationInterface {
   name = 'FixEstadoVehiculoEnum1736033300000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Step 1: Rename the old enum type
+    // Step 1: Drop the DEFAULT constraint (PostgreSQL cannot change type with DEFAULT)
+    await queryRunner.query(`ALTER TABLE vehiculos ALTER COLUMN estado DROP DEFAULT`);
+
+    // Step 2: Rename the old enum type
     await queryRunner.query(`ALTER TYPE estado_vehiculo RENAME TO estado_vehiculo_old`);
 
-    // Step 2: Create the new enum type with correct values
+    // Step 3: Create the new enum type with correct values
     await queryRunner.query(`CREATE TYPE estado_vehiculo AS ENUM ('Activo', 'Inactivo')`);
 
-    // Step 3: Update the column to use the new enum type
-    // First, we need to convert the column to text, then to the new enum
+    // Step 4: Update the column to use the new enum type
     // Map old values to new values: Disponible -> Activo, EnMantenimiento -> Activo, FueraDeServicio -> Inactivo
     await queryRunner.query(`
       ALTER TABLE vehiculos
@@ -34,21 +36,24 @@ export class FixEstadoVehiculoEnum1736033300000 implements MigrationInterface {
       )::estado_vehiculo
     `);
 
-    // Step 4: Set the default value
+    // Step 5: Re-add the default value
     await queryRunner.query(`ALTER TABLE vehiculos ALTER COLUMN estado SET DEFAULT 'Activo'`);
 
-    // Step 5: Drop the old enum type
+    // Step 6: Drop the old enum type
     await queryRunner.query(`DROP TYPE estado_vehiculo_old`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Step 1: Rename the current enum type
+    // Step 1: Drop the DEFAULT constraint
+    await queryRunner.query(`ALTER TABLE vehiculos ALTER COLUMN estado DROP DEFAULT`);
+
+    // Step 2: Rename the current enum type
     await queryRunner.query(`ALTER TYPE estado_vehiculo RENAME TO estado_vehiculo_new`);
 
-    // Step 2: Recreate the old enum type
+    // Step 3: Recreate the old enum type
     await queryRunner.query(`CREATE TYPE estado_vehiculo AS ENUM ('Disponible', 'EnMantenimiento', 'FueraDeServicio')`);
 
-    // Step 3: Convert back the column
+    // Step 4: Convert back the column
     // Map: Activo -> Disponible, Inactivo -> FueraDeServicio
     await queryRunner.query(`
       ALTER TABLE vehiculos
@@ -62,10 +67,10 @@ export class FixEstadoVehiculoEnum1736033300000 implements MigrationInterface {
       )::estado_vehiculo
     `);
 
-    // Step 4: Set the default value
+    // Step 5: Re-add the default value
     await queryRunner.query(`ALTER TABLE vehiculos ALTER COLUMN estado SET DEFAULT 'Disponible'`);
 
-    // Step 5: Drop the new enum type
+    // Step 6: Drop the new enum type
     await queryRunner.query(`DROP TYPE estado_vehiculo_new`);
   }
 }
