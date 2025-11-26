@@ -18,11 +18,17 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# CRITICAL: NEXT_PUBLIC_* variables must be set at BUILD time
+# They get embedded into the JavaScript bundle during 'npm run build'
+# Setting them at runtime has NO effect
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build the application
+# Build the application (NEXT_PUBLIC_API_URL is now available)
 RUN npm run build
 
 # Stage 3: Runner
