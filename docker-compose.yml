@@ -113,14 +113,18 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3000/api}
+        # CRITICAL: NEXT_PUBLIC_API_URL is baked into the JS bundle at build time
+        # For Dokploy: Set this to your backend's internal URL (e.g., http://backend:3002/api)
+        # The port MUST match BACKEND_PORT (default: 3000)
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:${BACKEND_PORT:-3000}/api}
         FRONTEND_PORT: ${FRONTEND_PORT:-3000}
     container_name: rapido-sur-frontend
     restart: always
     ports:
       - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+      # Note: NEXT_PUBLIC_* vars have NO effect at runtime - they're baked in at build time
+      # This is kept for documentation purposes only
       NODE_ENV: production
       PORT: ${FRONTEND_PORT:-3000}
       HOSTNAME: "0.0.0.0"
