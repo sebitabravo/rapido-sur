@@ -60,16 +60,12 @@ RUN chown -R nestjs:nodejs /app
 # Switch to non-root user
 USER nestjs
 
-# Port configuration (can be overridden at runtime via PORT env var)
-ARG PORT=8080
-ENV PORT=${PORT}
+# Expose port
+EXPOSE 3000
 
-# Expose port (documentation - actual port is set by PORT env var)
-EXPOSE ${PORT}
-
-# Health check using shell form for variable expansion
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Use dumb-init to handle signals properly and run entrypoint script
 ENTRYPOINT ["dumb-init", "--", "/app/scripts/docker-entrypoint.sh"]

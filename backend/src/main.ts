@@ -238,7 +238,7 @@ async function bootstrap() {
     },
   });
 
-  const port = process.env.PORT || 8080;
+  const port = process.env.PORT || 3000;
   await app.listen(port);
 
   // Use logger instead of console.log for structured logging
