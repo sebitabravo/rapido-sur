@@ -32,6 +32,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Port configuration via build arg (default 3000 for Dokploy compatibility)
+ARG FRONTEND_PORT=3000
+ENV PORT=${FRONTEND_PORT}
+ENV HOSTNAME="0.0.0.0"
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -48,11 +53,8 @@ RUN chown -R nextjs:nodejs /app
 # Switch to non-root user
 USER nextjs
 
-# Expose port
-EXPOSE 8080
-
-ENV PORT=8080
-ENV HOSTNAME="0.0.0.0"
+# Expose port (uses ARG value)
+EXPOSE ${FRONTEND_PORT}
 
 # Start the application using next start
 CMD ["npm", "start"]

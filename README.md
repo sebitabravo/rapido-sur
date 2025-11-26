@@ -50,11 +50,11 @@ npm run dev
 **Servicios iniciados**:
 - ✅ PostgreSQL en Docker (puerto 5432)
 - ✅ Backend con hot-reload (puerto 3000)
-- ✅ Frontend con hot-reload (puerto 8080)
+- ✅ Frontend con hot-reload (puerto 3000 por defecto, configurable vía FRONTEND_PORT)
 
 **Acceso**:
-- Frontend: http://localhost:8080
-- Backend: http://localhost:3000
+- Frontend: http://localhost:3000 (o el puerto configurado en FRONTEND_PORT)
+- Backend API: http://localhost:3000/api (o el puerto configurado en BACKEND_PORT)
 
 **Ventajas**:
 - ⚡ Muy rápido - inicia en segundos
@@ -79,8 +79,8 @@ docker-compose up -d
 
 **Servicios incluidos**:
 - ✅ PostgreSQL (puerto 5432)
-- ✅ Backend (puerto 3000)
-- ✅ Frontend (puerto 8080)
+- ✅ Backend (puerto configurable vía BACKEND_PORT, default 3000)
+- ✅ Frontend (puerto configurable vía FRONTEND_PORT, default 3000)
 
 📖 **Guía completa de Docker**: [DOCKER.md](./DOCKER.md)
 
@@ -123,7 +123,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Frontend disponible en: http://localhost:8080
+Frontend disponible en: http://localhost:3000 (o el puerto configurado)
 
 ---
 
