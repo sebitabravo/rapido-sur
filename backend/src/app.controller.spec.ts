@@ -10,7 +10,7 @@ describe("AppController", () => {
     get: jest.fn((key: string, defaultValue?: any) => {
       const config = {
         NODE_ENV: "test",
-        PORT: 3000,
+        PORT: 8080,
       };
       return config[key] || defaultValue;
     }),

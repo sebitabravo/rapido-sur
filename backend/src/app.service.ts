@@ -16,7 +16,7 @@ export class AppService {
    */
   getApiInfo() {
     const nodeEnv = this.configService.get<string>("NODE_ENV", "development");
-    const port = this.configService.get<number>("PORT", 3000);
+    const port = this.configService.get<number>("PORT", 8080);
     const baseUrl =
       nodeEnv === "production"
         ? this.configService.get<string>(
