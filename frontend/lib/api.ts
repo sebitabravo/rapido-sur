@@ -169,8 +169,7 @@ export const api = {
     maintenance: (params?: { fecha_inicio?: string; fecha_fin?: string }) =>
       apiClient.get("/reportes/mantenimientos", { params }),
     history: () => apiClient.get("/reportes/history"),
-    saveHistory: (data: { tipo: string; fecha_inicio: string; fecha_fin: string }) =>
-      apiClient.post("/reportes/history", data),
+    // Note: saveHistory is called automatically by backend when generating reports
     deleteHistory: (id: number) => apiClient.delete(`/reportes/history/${id}`),
   },
 

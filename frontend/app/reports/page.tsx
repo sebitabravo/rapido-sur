@@ -131,32 +131,14 @@ export default function ReportsPage() {
 
   const handleGenerateUnavailabilityReport = async () => {
     await loadUnavailabilityReport()
-    // Save to history after successful generation
-    try {
-      await api.reports.saveHistory({
-        tipo: 'Indisponibilidad',
-        fecha_inicio: startDate,
-        fecha_fin: endDate
-      })
-      await loadHistory() // Refresh history list
-    } catch (error) {
-      console.error("Error saving to history:", error)
-    }
+    // Backend automatically saves to history, just refresh the list
+    await loadHistory()
   }
 
   const handleGenerateCostReport = async () => {
     await loadCostReport()
-    // Save to history after successful generation
-    try {
-      await api.reports.saveHistory({
-        tipo: 'Costos',
-        fecha_inicio: startDate,
-        fecha_fin: endDate
-      })
-      await loadHistory() // Refresh history list
-    } catch (error) {
-      console.error("Error saving to history:", error)
-    }
+    // Backend automatically saves to history, just refresh the list
+    await loadHistory()
   }
 
   const handleViewHistory = async (item: ReportHistory) => {
