@@ -1,12 +1,14 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Cron } from "@nestjs/schedule";
 import { Alerta } from "./entities/alerta.entity";
 import { PlanPreventivo } from "../preventive-plans/entities/plan-preventivo.entity";
 import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
+import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
+import { Usuario } from "../users/entities/usuario.entity";
 import { MailService } from "../mail/mail.service";
-import { EstadoVehiculo, TipoAlerta, TipoIntervalo } from "../../common/enums";
+import { EstadoVehiculo, TipoAlerta, TipoIntervalo, EstadoAlerta, TipoOrdenTrabajo, EstadoOrdenTrabajo, PrioridadOrdenTrabajo } from "../../common/enums";
 
 /**
  * Service for managing preventive maintenance alerts
@@ -23,6 +25,8 @@ export class AlertsService {
     private readonly planRepo: Repository<PlanPreventivo>,
     @InjectRepository(Vehiculo)
     private readonly vehiculoRepo: Repository<Vehiculo>,
+    @InjectRepository(OrdenTrabajo)
+    private readonly otRepo: Repository<OrdenTrabajo>,
     private readonly mailService: MailService,
   ) {}
 
@@ -194,18 +198,18 @@ export class AlertsService {
    */
   async findAll(): Promise<Alerta[]> {
     return this.alertaRepo.find({
-      relations: ["vehiculo"],
+      relations: ["vehiculo", "orden_trabajo", "descartada_por"],
       order: { fecha_generacion: "DESC" },
     });
   }
 
   /**
-   * Find alert by ID
+   * Find alert by ID with full details
    */
   async findOne(id: number): Promise<Alerta | null> {
     return this.alertaRepo.findOne({
       where: { id },
-      relations: ["vehiculo"],
+      relations: ["vehiculo", "vehiculo.plan_preventivo", "orden_trabajo", "descartada_por"],
     });
   }
 
@@ -288,5 +292,128 @@ export class AlertsService {
 
     this.logger.log(`[TEST] ${alertasCreadas.length} alertas de prueba creadas`);
     return alertasCreadas;
+  }
+
+  /**
+   * Dismiss an alert (mark as false alarm)
+   */
+  async descartarAlerta(id: number, razon: string, usuario: Usuario): Promise<Alerta> {
+    const alerta = await this.alertaRepo.findOne({
+      where: { id },
+      relations: ["vehiculo"],
+    });
+
+    if (!alerta) {
+      throw new NotFoundException(`Alerta con ID ${id} no encontrada`);
+    }
+
+    if (alerta.estado === EstadoAlerta.Descartada) {
+      throw new BadRequestException("Esta alerta ya fue descartada");
+    }
+
+    if (alerta.estado === EstadoAlerta.Atendida) {
+      throw new BadRequestException("No se puede descartar una alerta que ya fue atendida");
+    }
+
+    // Update alert
+    alerta.estado = EstadoAlerta.Descartada;
+    alerta.razon_descarte = razon;
+    alerta.fecha_descarte = new Date();
+    alerta.descartada_por = usuario;
+
+    const alertaGuardada = await this.alertaRepo.save(alerta);
+
+    this.logger.log(`[ALERT] Alerta ${id} descartada por ${usuario.email}: ${razon}`);
+
+    return alertaGuardada;
+  }
+
+  /**
+   * Create a work order directly from an alert
+   */
+  async crearOrdenTrabajoDesdeAlerta(
+    id: number,
+    descripcion?: string,
+    prioridad?: string,
+  ): Promise<OrdenTrabajo> {
+    const alerta = await this.alertaRepo.findOne({
+      where: { id },
+      relations: ["vehiculo", "vehiculo.plan_preventivo"],
+    });
+
+    if (!alerta) {
+      throw new NotFoundException(`Alerta con ID ${id} no encontrada`);
+    }
+
+    if (alerta.estado === EstadoAlerta.Descartada) {
+      throw new BadRequestException("No se puede crear OT desde una alerta descartada");
+    }
+
+    if (alerta.orden_trabajo) {
+      throw new BadRequestException("Esta alerta ya tiene una orden de trabajo asociada");
+    }
+
+    // Generate consecutive OT number
+    const year = new Date().getFullYear();
+    const ultimaOT = await this.otRepo
+      .createQueryBuilder("ot")
+      .where("ot.numero_ot LIKE :pattern", { pattern: `OT-${year}-%` })
+      .orderBy("ot.id", "DESC")
+      .getOne();
+
+    let consecutivo = 1;
+    if (ultimaOT) {
+      const match = ultimaOT.numero_ot.match(/OT-\d{4}-(\d{5})/);
+      if (match) {
+        consecutivo = parseInt(match[1]) + 1;
+      }
+    }
+
+    const numero_ot = `OT-${year}-${consecutivo.toString().padStart(5, "0")}`;
+
+    // Build description
+    const desc = descripcion || alerta.mensaje;
+    const planInfo = alerta.vehiculo.plan_preventivo
+      ? ` (Plan: ${alerta.vehiculo.plan_preventivo.descripcion})`
+      : "";
+
+    // Create work order
+    const ordenTrabajo = this.otRepo.create({
+      numero_ot,
+      tipo: TipoOrdenTrabajo.Preventivo,
+      descripcion: desc + planInfo,
+      estado: EstadoOrdenTrabajo.Pendiente,
+      prioridad: prioridad ? PrioridadOrdenTrabajo[prioridad] : PrioridadOrdenTrabajo.MEDIA,
+      fecha_creacion: new Date(),
+      vehiculo: alerta.vehiculo,
+    });
+
+    const otGuardada = await this.otRepo.save(ordenTrabajo);
+
+    // Update alert
+    alerta.estado = EstadoAlerta.EnProceso;
+    alerta.orden_trabajo = otGuardada;
+    await this.alertaRepo.save(alerta);
+
+    this.logger.log(
+      `[ALERT] OT ${numero_ot} creada desde alerta ${id} para vehículo ${alerta.vehiculo.patente}`,
+    );
+
+    return otGuardada;
+  }
+
+  /**
+   * Mark alert as attended when work order is completed
+   */
+  async marcarComoAtendida(alertaId: number): Promise<void> {
+    const alerta = await this.alertaRepo.findOne({
+      where: { id: alertaId },
+    });
+
+    if (alerta) {
+      alerta.estado = EstadoAlerta.Atendida;
+      await this.alertaRepo.save(alerta);
+      this.logger.log(`[ALERT] Alerta ${alertaId} marcada como atendida`);
+    }
   }
 }

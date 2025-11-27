@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, ParseIntPipe, UseGuards, Body } from "@nestjs/common";
+import { Controller, Get, Post, Delete, Patch, Param, ParseIntPipe, UseGuards, Body, Request, NotFoundException } from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
@@ -15,6 +15,8 @@ import { Alerta } from "./entities/alerta.entity";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { Usuario } from "../users/entities/usuario.entity";
 import { RolUsuario } from "../../common/enums";
 
 /**
@@ -173,5 +175,146 @@ export class AlertsController {
       message: "Alertas de prueba creadas correctamente",
       alertas,
     };
+  }
+
+  /**
+   * PATCH /alertas/:id/descartar
+   * Dismiss an alert (mark as false alarm)
+   */
+  @ApiOperation({
+    summary: "Descartar una alerta",
+    description:
+      "Marca una alerta como descartada (falsa alarma). " +
+      "La alerta cambia al estado 'Descartada' y se registra quién la descartó y la razón.",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID de la alerta" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        razon: {
+          type: "string",
+          description: "Razón por la cual se descarta la alerta",
+          example: "Falsa alarma - vehículo recién mantenido",
+        },
+      },
+      required: ["razon"],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Alerta descartada correctamente",
+    schema: {
+      example: {
+        message: "Alerta descartada correctamente",
+        alerta: {
+          id: 1,
+          estado: "Descartada",
+          razon_descarte: "Falsa alarma - vehículo recién mantenido",
+          fecha_descarte: "2025-01-05T10:30:00Z",
+        },
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: "Solo Admin y Jefe pueden descartar alertas" })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Patch(":id/descartar")
+  async descartarAlerta(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { razon: string },
+    @CurrentUser() usuario: Usuario,
+  ) {
+    const alerta = await this.alertsService.descartarAlerta(id, body.razon, usuario);
+    return {
+      message: "Alerta descartada correctamente",
+      alerta,
+    };
+  }
+
+  /**
+   * POST /alertas/:id/crear-orden-trabajo
+   * Create a work order directly from an alert
+   */
+  @ApiOperation({
+    summary: "Crear orden de trabajo desde alerta",
+    description:
+      "Crea una orden de trabajo de tipo Preventivo directamente desde una alerta. " +
+      "La alerta se vincula automáticamente a la OT y cambia al estado 'EnProceso'.",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID de la alerta" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        descripcion: {
+          type: "string",
+          description: "Descripción adicional para la orden de trabajo",
+          example: "Mantenimiento preventivo según plan",
+        },
+        prioridad: {
+          type: "string",
+          enum: ["ALTA", "MEDIA", "BAJA"],
+          description: "Prioridad de la orden",
+          example: "MEDIA",
+        },
+      },
+      required: ["prioridad"],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Orden de trabajo creada correctamente",
+    schema: {
+      example: {
+        message: "Orden de trabajo creada desde alerta",
+        ordenTrabajo: {
+          id: 42,
+          numero_ot: "OT-2025-00042",
+          tipo: "Preventivo",
+          estado: "Pendiente",
+        },
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: "Solo Admin y Jefe pueden crear órdenes de trabajo" })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Post(":id/crear-orden-trabajo")
+  async crearOrdenTrabajoDesdeAlerta(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { descripcion?: string; prioridad: string },
+  ) {
+    const ordenTrabajo = await this.alertsService.crearOrdenTrabajoDesdeAlerta(
+      id,
+      body.descripcion,
+      body.prioridad,
+    );
+    return {
+      message: "Orden de trabajo creada desde alerta",
+      ordenTrabajo,
+    };
+  }
+
+  /**
+   * GET /alertas/:id
+   * Get a single alert with full details
+   */
+  @ApiOperation({
+    summary: "Obtener detalle de una alerta",
+    description: "Obtiene información completa de una alerta específica incluyendo vehículo, plan preventivo y orden de trabajo asociada.",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID de la alerta" })
+  @ApiResponse({
+    status: 200,
+    description: "Detalle de la alerta",
+  })
+  @Get(":id")
+  async findOne(@Param("id", ParseIntPipe) id: number): Promise<Alerta> {
+    const alerta = await this.alertsService.findOne(id);
+    if (!alerta) {
+      throw new NotFoundException(`Alerta con ID ${id} no encontrada`);
+    }
+    return alerta;
   }
 }

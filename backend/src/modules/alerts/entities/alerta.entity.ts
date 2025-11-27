@@ -7,9 +7,11 @@ import {
   ManyToOne,
   JoinColumn,
 } from "typeorm";
-import { IsNotEmpty, IsString, IsEnum, IsBoolean } from "class-validator";
-import { TipoAlerta } from "../../../common/enums";
+import { IsNotEmpty, IsString, IsEnum, IsBoolean, IsOptional } from "class-validator";
+import { TipoAlerta, EstadoAlerta } from "../../../common/enums";
 import { Vehiculo } from "../../vehicles/entities/vehiculo.entity";
+import { OrdenTrabajo } from "../../work-orders/entities/orden-trabajo.entity";
+import { Usuario } from "../../users/entities/usuario.entity";
 
 /**
  * Entity representing a preventive maintenance alert
@@ -53,6 +55,32 @@ export class Alerta {
   email_enviado: boolean;
 
   /**
+   * Current state of the alert
+   */
+  @Column({
+    type: "enum",
+    enum: EstadoAlerta,
+    default: EstadoAlerta.Activa,
+  })
+  @IsEnum(EstadoAlerta)
+  estado: EstadoAlerta;
+
+  /**
+   * Reason for dismissing the alert (if dismissed)
+   */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  @IsString()
+  razon_descarte?: string;
+
+  /**
+   * When the alert was dismissed
+   */
+  @Column({ type: "timestamp", nullable: true })
+  @IsOptional()
+  fecha_descarte?: Date;
+
+  /**
    * Automatic timestamps
    */
   @CreateDateColumn({ type: "timestamp" })
@@ -74,4 +102,26 @@ export class Alerta {
   })
   @JoinColumn({ name: "vehiculo_id" })
   vehiculo: Vehiculo;
+
+  /**
+   * Work order created from this alert (if any)
+   */
+  @ManyToOne(() => OrdenTrabajo, {
+    onDelete: "SET NULL",
+    nullable: true,
+  })
+  @JoinColumn({ name: "orden_trabajo_id" })
+  @IsOptional()
+  orden_trabajo?: OrdenTrabajo;
+
+  /**
+   * User who dismissed this alert (if dismissed)
+   */
+  @ManyToOne(() => Usuario, {
+    onDelete: "SET NULL",
+    nullable: true,
+  })
+  @JoinColumn({ name: "descartada_por_id" })
+  @IsOptional()
+  descartada_por?: Usuario;
 }
