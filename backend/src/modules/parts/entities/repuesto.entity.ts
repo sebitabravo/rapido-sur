@@ -64,10 +64,25 @@ export class Repuesto {
   /**
    * Optional description or notes about the part
    */
-  @Column({ type: "text", nullable: true })
-  @IsOptional()
   @IsString()
   descripcion: string;
+
+  /**
+   * Part category
+   */
+  @Column({ type: "varchar", length: 50, nullable: true })
+  @IsOptional()
+  @IsString()
+  categoria: string;
+
+  /**
+   * Minimum stock level for alerts
+   */
+  @Column({ type: "int", default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  stock_minimo: number;
 
   /**
    * Automatic timestamps

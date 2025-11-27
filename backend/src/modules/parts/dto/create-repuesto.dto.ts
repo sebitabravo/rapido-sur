@@ -40,4 +40,19 @@ export class CreateRepuestoDto {
   @IsOptional()
   @IsString()
   descripcion?: string;
+
+  /**
+   * Category
+   */
+  @IsOptional()
+  @IsString()
+  categoria?: string;
+
+  /**
+   * Minimum stock for alerts
+   */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  stock_minimo?: number;
 }
