@@ -9,6 +9,7 @@ import { Repuesto } from "../parts/entities/repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
 import { WorkOrdersService } from "./work-orders.service";
 import { WorkOrdersController } from "./work-orders.controller";
+import { MailModule } from "../mail/mail.module";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WorkOrdersController } from "./work-orders.controller";
       Repuesto,
       Tarea,
     ]),
+    MailModule,
   ],
   controllers: [WorkOrdersController],
   providers: [WorkOrdersService],

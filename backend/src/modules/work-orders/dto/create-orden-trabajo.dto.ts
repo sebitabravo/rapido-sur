@@ -66,4 +66,13 @@ export class CreateOrdenTrabajoDto {
   @IsNumber({}, { message: "El costo estimado debe ser un número" })
   @Min(0, { message: "El costo estimado no puede ser negativo" })
   costo_estimado?: number;
+
+  @ApiPropertyOptional({
+    description: "ID del mecánico asignado (opcional, se puede asignar después)",
+    example: 3,
+    type: Number,
+  })
+  @IsOptional()
+  @IsInt()
+  mecanico_asignado_id?: number;
 }

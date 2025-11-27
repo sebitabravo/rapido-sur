@@ -9,6 +9,7 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
+  Req,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -145,17 +146,21 @@ export class WorkOrdersController {
     },
   })
   @Get()
-  async findAll(@Query() filters: FilterOrdenTrabajoDto) {
-    return this.workOrdersService.findAll(filters);
+  async findAll(
+    @Query() filters: FilterOrdenTrabajoDto,
+    @CurrentUser() user: Usuario,
+  ) {
+    return this.workOrdersService.findAll(filters, user);
   }
 
   /**
    * GET /ordenes-trabajo/:id
    * Get single work order with full details
+   * Mechanics can only see if they are assigned or have tasks in it
    */
   @ApiOperation({
     summary: "Obtener orden de trabajo por ID",
-    description: "Obtiene una orden de trabajo específica con todos sus detalles, tareas y repuestos.",
+    description: "Obtiene una orden de trabajo específica con todos sus detalles, tareas y repuestos. Los mecánicos solo pueden ver OT donde están asignados o tienen tareas.",
   })
   @ApiParam({ name: "id", type: Number, description: "ID de la orden de trabajo" })
   @ApiResponse({
@@ -163,9 +168,13 @@ export class WorkOrdersController {
     description: "Orden de trabajo encontrada",
   })
   @ApiNotFoundResponse({ description: "Orden de trabajo no encontrada" })
+  @ApiForbiddenResponse({ description: "No tiene permiso para ver esta orden" })
   @Get(":id")
-  async findOne(@Param("id", ParseIntPipe) id: number): Promise<OrdenTrabajo> {
-    return this.workOrdersService.findOne(id);
+  async findOne(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<OrdenTrabajo> {
+    return this.workOrdersService.findOne(id, req.user);
   }
 
   /**

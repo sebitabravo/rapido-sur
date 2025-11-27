@@ -34,6 +34,7 @@ import {
   EstadoVehiculo,
   TipoIntervalo,
 } from "../../common/enums";
+import { MailService } from "../mail/mail.service";
 
 /**
  * Service for managing work orders
@@ -59,6 +60,7 @@ export class WorkOrdersService {
     @InjectRepository(Tarea)
     private readonly tareaRepo: Repository<Tarea>,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   /**
@@ -68,9 +70,21 @@ export class WorkOrdersService {
     // Validate vehicle exists
     const vehiculo = await this.vehiculoRepo.findOne({
       where: { id: createDto.vehiculo_id },
+      relations: ['marca'],
     });
     if (!vehiculo) {
       throw new NotFoundException("Vehículo no encontrado");
+    }
+
+    // Validate mechanic if provided
+    let mecanico: Usuario | null = null;
+    if (createDto.mecanico_asignado_id) {
+      mecanico = await this.usuarioRepo.findOne({
+        where: { id: createDto.mecanico_asignado_id },
+      });
+      if (!mecanico) {
+        throw new NotFoundException("Mecánico no encontrado");
+      }
     }
 
     // Generate automatic work order number: OT-2025-00001
@@ -84,10 +98,36 @@ export class WorkOrdersService {
       descripcion: createDto.descripcion,
       costo_estimado: createDto.costo_estimado,
       vehiculo,
-      estado: EstadoOrdenTrabajo.Pendiente,
+      ...(mecanico && { mecanico }),
+      estado: mecanico ? EstadoOrdenTrabajo.Asignada : EstadoOrdenTrabajo.Pendiente,
     });
 
-    return this.otRepo.save(orden);
+    const savedOrden = await this.otRepo.save(orden);
+
+    // Send email notifications
+    try {
+      const managerEmail = this.configService.get<string>("MAINTENANCE_MANAGER_EMAIL");
+      if (managerEmail) {
+        await this.mailService.sendWorkOrderCreated(
+          mecanico?.email || null,
+          mecanico?.nombre_completo || null,
+          managerEmail,
+          savedOrden.numero_ot,
+          {
+            patente: vehiculo.patente,
+            marca: vehiculo.marca,
+            modelo: vehiculo.modelo,
+          },
+          savedOrden.tipo,
+        );
+        this.logger.log(`Email notification sent for new work order: ${savedOrden.numero_ot}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send email notification for work order ${savedOrden.numero_ot}:`, error);
+      // Don't throw error - work order was created successfully
+    }
+
+    return savedOrden;
   }
 
   /**
@@ -137,6 +177,35 @@ export class WorkOrdersService {
       `Work order updated: ${updated.numero_ot} - Changes applied`,
     );
 
+    // Send email notification about update
+    try {
+      const managerEmail = this.configService.get<string>("MAINTENANCE_MANAGER_EMAIL");
+      if (managerEmail) {
+        const changes: string[] = [];
+        if (updateDto.tipo) changes.push(`tipo: ${updateDto.tipo}`);
+        if (updateDto.prioridad) changes.push(`prioridad: ${updateDto.prioridad}`);
+        if (updateDto.descripcion) changes.push("descripción actualizada");
+        if (updateDto.costo_estimado) changes.push(`costo estimado: $${updateDto.costo_estimado}`);
+        if (updateDto.vehiculo_id) changes.push("vehículo cambiado");
+
+        await this.mailService.sendWorkOrderUpdated(
+          updated.mecanico?.email || null,
+          updated.mecanico?.nombre_completo || null,
+          managerEmail,
+          updated.numero_ot,
+          {
+            patente: updated.vehiculo.patente,
+            marca: updated.vehiculo.marca,
+            modelo: updated.vehiculo.modelo,
+          },
+          changes.join(', '),
+        );
+        this.logger.log(`Email notification sent for updated work order: ${updated.numero_ot}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send email notification for updated work order ${updated.numero_ot}:`, error);
+    }
+
     return updated;
   }
 
@@ -178,7 +247,31 @@ export class WorkOrdersService {
     orden.mecanico = mecanico;
     orden.estado = EstadoOrdenTrabajo.Asignada;
 
-    return this.otRepo.save(orden);
+    const updated = await this.otRepo.save(orden);
+
+    // Send email notification to mechanic
+    try {
+      const managerEmail = this.configService.get<string>("MAINTENANCE_MANAGER_EMAIL");
+      if (managerEmail) {
+        await this.mailService.sendWorkOrderCreated(
+          mecanico.email,
+          mecanico.nombre_completo,
+          managerEmail,
+          updated.numero_ot,
+          {
+            patente: updated.vehiculo.patente,
+            marca: updated.vehiculo.marca,
+            modelo: updated.vehiculo.modelo,
+          },
+          updated.tipo,
+        );
+        this.logger.log(`Assignment email sent to mechanic for work order: ${updated.numero_ot}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send assignment email for work order ${updated.numero_ot}:`, error);
+    }
+
+    return updated;
   }
 
   /**
@@ -242,7 +335,7 @@ export class WorkOrdersService {
    * All operations wrapped in database transaction for data consistency
    */
   async cerrar(id: number): Promise<OrdenTrabajo> {
-    return await this.otRepo.manager.transaction(
+    const result = await this.otRepo.manager.transaction(
       async (transactionalEntityManager) => {
         const orden = await transactionalEntityManager.findOne(OrdenTrabajo, {
           where: { id },
@@ -251,6 +344,7 @@ export class WorkOrdersService {
             "vehiculo.plan_preventivo",
             "tareas",
             "tareas.detalles_repuestos",
+            "mecanico",
           ],
         });
 
@@ -334,6 +428,28 @@ export class WorkOrdersService {
         return saved;
       },
     );
+
+    // Send email notification after successful closure
+    try {
+      const managerEmail = this.configService.get<string>("MAINTENANCE_MANAGER_EMAIL");
+      if (managerEmail && result.mecanico) {
+        await this.mailService.sendWorkOrderCompleted(
+          managerEmail,
+          result.mecanico.nombre_completo,
+          result.numero_ot,
+          {
+            patente: result.vehiculo.patente,
+            marca: result.vehiculo.marca,
+            modelo: result.vehiculo.modelo,
+          },
+        );
+        this.logger.log(`Completion email sent for work order: ${result.numero_ot}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send completion email for work order ${result.numero_ot}:`, error);
+    }
+
+    return result;
   }
 
   /**
@@ -341,12 +457,23 @@ export class WorkOrdersService {
    */
   async findAll(
     filters: FilterOrdenTrabajoDto,
+    user: Usuario,
   ): Promise<PaginatedResult<OrdenTrabajo>> {
     const qb = this.otRepo
       .createQueryBuilder("ot")
       .leftJoinAndSelect("ot.vehiculo", "v")
       .leftJoinAndSelect("ot.mecanico", "m")
       .leftJoinAndSelect("ot.tareas", "t");
+
+    // 🔒 SECURITY: Mechanics can see work orders if:
+    // 1. They are assigned as the main mechanic (ot.mecanico_id)
+    // 2. OR they have tasks assigned to them in that work order
+    if (user.rol === RolUsuario.Mecanico) {
+      qb.andWhere(
+        "(ot.mecanico_id = :currentMecanicoId OR EXISTS (SELECT 1 FROM tarea WHERE tarea.orden_trabajo_id = ot.id AND tarea.mecanico_id = :currentMecanicoId))",
+        { currentMecanicoId: user.id }
+      );
+    }
 
     if (filters.vehiculo_id) {
       qb.andWhere("ot.vehiculo_id = :vehiculoId", {
@@ -394,13 +521,14 @@ export class WorkOrdersService {
   /**
    * Find work order by ID
    */
-  async findOne(id: number): Promise<OrdenTrabajo> {
+  async findOne(id: number, user?: Usuario): Promise<OrdenTrabajo> {
     const orden = await this.otRepo.findOne({
       where: { id },
       relations: [
         "vehiculo",
         "mecanico",
         "tareas",
+        "tareas.mecanico",
         "tareas.detalles_repuestos",
         "tareas.detalles_repuestos.repuesto",
       ],
@@ -408,6 +536,20 @@ export class WorkOrdersService {
 
     if (!orden) {
       throw new NotFoundException("Orden de trabajo no encontrada");
+    }
+
+    // 🔒 SECURITY: If user is a mechanic, verify they have access
+    if (user && user.rol === RolUsuario.Mecanico) {
+      const isAssignedToWorkOrder = orden.mecanico?.id === user.id;
+      const hasAssignedTasks = orden.tareas?.some(
+        (tarea) => tarea.mecanico_asignado?.id === user.id
+      );
+
+      if (!isAssignedToWorkOrder && !hasAssignedTasks) {
+        throw new ForbiddenException(
+          "No tienes permiso para ver esta orden de trabajo"
+        );
+      }
     }
 
     return orden;
@@ -549,6 +691,20 @@ export class WorkOrdersService {
 
     // Update estado
     orden.estado = nuevoEstado;
+
+    // If finalizing, auto-complete all pending tasks
+    if (nuevoEstado === EstadoOrdenTrabajo.Finalizada) {
+      this.logger.log(`Auto-completing pending tasks for work order ${id}`);
+      
+      await this.tareaRepo
+        .createQueryBuilder()
+        .update(Tarea)
+        .set({ completada: true })
+        .where("orden_trabajo_id = :ordenId", { ordenId: id })
+        .andWhere("completada = :completada", { completada: false })
+        .execute();
+    }
+
     await this.otRepo.save(orden);
 
     // Return updated order with relations
