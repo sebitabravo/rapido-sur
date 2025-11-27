@@ -48,9 +48,6 @@ COPY --from=builder /app/dist ./dist
 # Copy scripts directory (includes docker-entrypoint.sh)
 COPY --chown=nestjs:nodejs scripts ./scripts
 
-# Copy .env.example for reference (actual .env comes from Dokploy)
-COPY .env.example ./
-
 # Make entrypoint script executable
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
