@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Delete, Body, Param, Query, Res, UseGuards, Request } from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
@@ -12,6 +12,7 @@ import { SkipThrottle } from "@nestjs/throttler";
 import type { Response } from "express";
 import { ReportsService } from "./reports.service";
 import { FilterReportDto } from "./dto/filter-report.dto";
+import { CreateHistoryDto } from "./dto/create-history.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -30,7 +31,7 @@ import { RolUsuario } from "../../common/enums";
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(private readonly reportsService: ReportsService) { }
 
   /**
    * GET /reportes/indisponibilidad
@@ -126,5 +127,57 @@ export class ReportsController {
       `attachment; filename=reporte-${tipo}-${Date.now()}.csv`,
     );
     res.send(csv);
+  }
+  /**
+   * GET /reportes/history
+   * Get report generation history
+   */
+  @ApiOperation({
+    summary: "Historial de reportes",
+    description: "Obtiene el historial de reportes generados.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Historial de reportes",
+    isArray: true,
+  })
+  @Get("history")
+  async getHistory() {
+    return this.reportsService.getHistory();
+  }
+
+  /**
+   * POST /reportes/history
+   * Save report generation to history
+   */
+  @ApiOperation({
+    summary: "Guardar reporte en historial",
+    description: "Registra la generación de un reporte en el historial.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Reporte guardado en historial",
+  })
+  @Post("history")
+  async saveHistory(@Body() dto: CreateHistoryDto, @Request() req: any) {
+    const usuario = req.user?.nombre_completo || req.user?.email;
+    return this.reportsService.saveHistory(dto.tipo, dto.fecha_inicio, dto.fecha_fin, usuario);
+  }
+
+  /**
+   * DELETE /reportes/history/:id
+   * Delete a report from history
+   */
+  @ApiOperation({
+    summary: "Eliminar reporte del historial",
+    description: "Elimina un reporte del historial.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Reporte eliminado del historial",
+  })
+  @Delete("history/:id")
+  async deleteHistory(@Param("id") id: number) {
+    return this.reportsService.deleteHistory(id);
   }
 }

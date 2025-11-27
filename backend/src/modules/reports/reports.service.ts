@@ -1,12 +1,14 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, Between } from "typeorm";
 import { ConfigService } from "@nestjs/config";
 import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
 import { DetalleRepuesto } from "../part-details/entities/detalle-repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
 import { FilterReportDto } from "./dto/filter-report.dto";
 import { EstadoOrdenTrabajo, TipoOrdenTrabajo } from "../../common/enums";
+import { ReportHistory } from './entities/report-history.entity';
+import { format, parseISO, differenceInDays } from 'date-fns';
 
 /**
  * Service for generating reports
@@ -21,14 +23,20 @@ export class ReportsService {
     private readonly detalleRepo: Repository<DetalleRepuesto>,
     @InjectRepository(Tarea)
     private readonly tareaRepo: Repository<Tarea>,
+    @InjectRepository(ReportHistory)
+    private reportHistoryRepository: Repository<ReportHistory>,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   /**
    * REPORT: Vehicle downtime
    */
   async getReporteIndisponibilidad(filters: FilterReportDto): Promise<any[]> {
     const { fecha_inicio, fecha_fin, vehiculo_id } = filters;
+
+    if (fecha_inicio && fecha_fin) {
+      await this.saveHistory('Indisponibilidad', fecha_inicio, fecha_fin);
+    }
 
     const qb = this.otRepo
       .createQueryBuilder("ot")
@@ -66,6 +74,10 @@ export class ReportsService {
    */
   async getReporteCostos(filters: FilterReportDto): Promise<any> {
     const { fecha_inicio, fecha_fin, vehiculo_id } = filters;
+
+    if (fecha_inicio && fecha_fin) {
+      await this.saveHistory('Costos', fecha_inicio, fecha_fin);
+    }
 
     // Query for costs by vehicle
     const qbVehiculos = this.otRepo
@@ -203,7 +215,7 @@ export class ReportsService {
 
     // Transform monthly data into chart format
     const mesesMap = new Map<string, { preventivo: number; correctivo: number }>();
-    
+
     tendencias.forEach((item) => {
       const mes = item.mes;
       if (!mesesMap.has(mes)) {
@@ -279,5 +291,29 @@ export class ReportsService {
       headers.map((header) => item[header] || "").join(","),
     );
     return [headerRow, ...rows].join("\n");
+  }
+
+  async saveHistory(tipo: string, fechaInicio: string, fechaFin: string, usuario?: string) {
+    const history = this.reportHistoryRepository.create({
+      tipo,
+      fechaInicio,
+      fechaFin,
+      usuario,
+    });
+    return await this.reportHistoryRepository.save(history);
+  }
+
+  async getHistory() {
+    return await this.reportHistoryRepository.find({
+      order: { fechaGeneracion: 'DESC' },
+    });
+  }
+
+  async deleteHistory(id: number) {
+    const result = await this.reportHistoryRepository.delete(id);
+    if (result.affected === 0) {
+      throw new BadRequestException('Reporte no encontrado en el historial');
+    }
+    return { message: 'Reporte eliminado del historial' };
   }
 }
