@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -34,7 +34,7 @@ RUN apk add --no-cache dumb-init
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001
+  adduser -S nestjs -u 1001
 
 # Copy package files
 COPY package*.json ./
