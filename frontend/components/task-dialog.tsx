@@ -176,48 +176,59 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
     setConfirmOpen(false)
 
     try {
-      const data = {
+      const data: any = {
         descripcion: formData.descripcion.trim(),
-        fecha_vencimiento: formData.fecha_vencimiento || undefined,
-        mecanico_asignado_id: formData.mecanico_asignado_id ? parseInt(formData.mecanico_asignado_id) : undefined,
-        orden_trabajo_id: workOrderId
+      }
+
+      // Only add optional fields if they have values
+      if (formData.fecha_vencimiento) {
+        data.fecha_vencimiento = formData.fecha_vencimiento
+      }
+
+      if (formData.mecanico_asignado_id && formData.mecanico_asignado_id !== "") {
+        data.mecanico_asignado_id = parseInt(formData.mecanico_asignado_id)
       }
 
       let taskId: number
       let taskCreated = false
 
       if (task) {
+        // UPDATE - don't send orden_trabajo_id
         await api.tasks.update(task.id, data)
         taskId = task.id
-        taskCreated = true
+        taskCreated = false // Don't save parts on update
         toast.success("Tarea actualizada exitosamente")
       } else {
+        // CREATE - include orden_trabajo_id
+        data.orden_trabajo_id = workOrderId
         const response = await api.tasks.create(data)
         taskId = response.data.id
         taskCreated = true
         toast.success("Tarea creada exitosamente")
       }
 
-      // Save part usages
-      for (const usage of partUsages) {
-        if (usage.repuesto_id > 0 && usage.cantidad_usada > 0) {
-          try {
-            const payload = {
-              tarea_id: Number(taskId),
-              repuesto_id: Number(usage.repuesto_id),
-              cantidad_usada: Number(usage.cantidad_usada)
+      // Only save part usages when CREATING a new task
+      if (!task && partUsages.length > 0) {
+        for (const usage of partUsages) {
+          if (usage.repuesto_id > 0 && usage.cantidad_usada > 0) {
+            try {
+              const payload = {
+                tarea_id: Number(taskId),
+                repuesto_id: Number(usage.repuesto_id),
+                cantidad_usada: Number(usage.cantidad_usada)
+              }
+              console.log('📤 Sending part detail:', payload)
+              await api.partDetails.create(payload)
+            } catch (error: any) {
+              console.error("Error saving part detail:", error)
+              const message = error.response?.data?.message || `Error al guardar repuesto`
+              toast.error(message)
             }
-            console.log('📤 Sending part detail:', payload)
-            await api.partDetails.create(payload)
-          } catch (error: any) {
-            console.error("Error saving part detail:", error)
-            const message = error.response?.data?.message || `Error al guardar repuesto`
-            toast.error(message)
           }
         }
       }
 
-      if (taskCreated) {
+      if (taskCreated || task) {
         onSave()
       }
     } catch (error: any) {

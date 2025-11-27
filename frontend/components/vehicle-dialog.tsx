@@ -34,8 +34,8 @@ const vehicleSchema = z.object({
     .string()
     .min(1, "La patente es requerida")
     .regex(
-      /^([A-Z]{2}-[A-Z]{2}-\d{2}|[A-Z]{4}-\d{2})$/i,
-      "Formato de patente chilena inválido. Use formato AA-BB-12 o ABCD-12"
+      /^([A-Z]{4}\d{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|[A-Z]{4}-\d{2})$/i,
+      "Formato de patente chilena inválido. Use formato XXXX12, AA-BB-12 o ABCD-12"
     )
     .transform((val) => val.toUpperCase()),
   marca: z.string().min(1, "La marca es requerida"),
@@ -85,29 +85,45 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
   })
 
   useEffect(() => {
-    if (vehicle) {
-      reset({
-        patente: vehicle.patente || "",
-        marca: vehicle.marca || "",
-        modelo: vehicle.modelo || "",
-        anno: Number(vehicle.anno) || new Date().getFullYear(),
-        kilometraje_actual: Number(vehicle.kilometraje_actual) || 0,
-      })
-    } else {
-      reset({
-        patente: "",
-        marca: "",
-        modelo: "",
-        anno: new Date().getFullYear(),
-        kilometraje_actual: 0,
-      })
+    if (open) {
+      if (vehicle) {
+        reset({
+          patente: vehicle.patente || "",
+          marca: vehicle.marca || "",
+          modelo: vehicle.modelo || "",
+          anno: Number(vehicle.anno) || new Date().getFullYear(),
+          kilometraje_actual: Number(vehicle.kilometraje_actual) || 0,
+        })
+      } else {
+        reset({
+          patente: "",
+          marca: "",
+          modelo: "",
+          anno: new Date().getFullYear(),
+          kilometraje_actual: 0,
+        })
+      }
     }
-  }, [vehicle, reset])
+  }, [vehicle, reset, open])
 
   const onSubmit = async (data: VehicleFormData) => {
     // Show confirmation dialog before creating/updating
     setPendingData(data)
     setShowConfirmDialog(true)
+  }
+
+  const handleCancel = () => {
+    setShowConfirmDialog(false)
+    setPendingData(null)
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open && !showConfirmDialog) {
+      // Only close if confirmation dialog is not open
+      onOpenChange(false)
+      reset()
+      setPendingData(null)
+    }
   }
 
   const handleConfirmedSubmit = async () => {
@@ -116,16 +132,6 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
     try {
       setLoading(true)
       setShowConfirmDialog(false)
-
-      // Debug: Log the data being sent
-      console.log("📤 Sending vehicle data:", pendingData)
-      console.log("📋 Data types:", {
-        patente: typeof pendingData.patente,
-        marca: typeof pendingData.marca,
-        modelo: typeof pendingData.modelo,
-        anno: typeof pendingData.anno,
-        kilometraje_actual: typeof pendingData.kilometraje_actual,
-      })
 
       if (isEdit) {
         await api.vehicles.update(vehicle.id, pendingData)
@@ -137,10 +143,19 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
       onSave()
       setPendingData(null)
     } catch (error: any) {
-      console.error("[v0] Error saving vehicle:", error)
-      console.error("📥 Backend response:", error.response?.data)
-      console.error("📥 Status code:", error.response?.status)
-      toast.error(error.response?.data?.message || "Error al guardar el vehículo")
+      console.error("Error saving vehicle:", error)
+
+      let errorMessage = "Error al guardar el vehículo"
+      if (error.response?.data?.message) {
+        if (typeof error.response.data.message === "string") {
+          errorMessage = error.response.data.message
+        } else if (Array.isArray(error.response.data.message)) {
+          errorMessage = error.response.data.message.join(", ")
+        } else {
+          errorMessage = JSON.stringify(error.response.data.message)
+        }
+      }
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -148,8 +163,8 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={open} onOpenChange={handleDialogClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEdit ? "Editar Vehículo" : "Agregar Vehículo"}</DialogTitle>
             <DialogDescription>
@@ -228,7 +243,12 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => handleDialogClose(false)} 
+                disabled={loading}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading}>
@@ -261,7 +281,9 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancel} disabled={loading}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmedSubmit} disabled={loading}>
               {loading ? (
                 <>

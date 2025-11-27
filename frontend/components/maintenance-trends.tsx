@@ -24,8 +24,8 @@ export function MaintenanceTrends() {
   const loadMaintenanceTrends = async () => {
     try {
       const response = await api.reports.maintenance()
-      const trends = response.data?.tendenciasMensuales || []
-      
+      const trends = response.data?.tendencias_mensuales || []
+
       // If no data, show empty state
       setData(trends)
     } catch (error) {

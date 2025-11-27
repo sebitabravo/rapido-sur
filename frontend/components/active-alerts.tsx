@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertTriangle, X } from "lucide-react"
+import { AlertTriangle, Eye } from "lucide-react"
 import { formatDate } from "@/lib/utils"
+import { AlertDetailDialog } from "@/components/alert-detail-dialog"
 
 interface Alert {
   id: number
@@ -15,6 +16,9 @@ interface Alert {
   mensaje: string
   fecha_generacion: string
   email_enviado: boolean
+  estado: string
+  orden_trabajo_id?: number
+  descartada_por_id?: number
   vehiculo?: {
     patente: string
     marca: string
@@ -22,9 +26,11 @@ interface Alert {
   }
 }
 
-export function ActiveAlerts() {
+export function ActiveAlerts({ onRefresh }: { onRefresh?: () => void }) {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
   useEffect(() => {
     loadAlerts()
@@ -33,33 +39,48 @@ export function ActiveAlerts() {
   const loadAlerts = async () => {
     try {
       const response = await api.alerts.getAll()
-      // Get all alerts (they are all "active" by definition - pending deletion when WO is created)
       const allAlerts = response.data || []
-      setAlerts(allAlerts.slice(0, 5))
+
+      // DEBUG: Log para ver qué campos vienen del backend
+      if (allAlerts.length > 0) {
+        console.log("🔍 Primera alerta:", allAlerts[0])
+        console.log("🔍 Campos disponibles:", Object.keys(allAlerts[0]))
+      }
+
+      // Filter only ACTIVE alerts
+      const activeAlerts = allAlerts.filter((alert: Alert) =>
+        alert.estado === "Activa"
+      )
+
+      console.log(`📊 Total alertas: ${allAlerts.length}, Activas: ${activeAlerts.length}`)
+
+      setAlerts(activeAlerts.slice(0, 20))
     } catch (error) {
-      console.error("[v0] Error loading alerts:", error)
+      console.error("Error loading alerts:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDismiss = async (id: number) => {
-    // TODO: Backend endpoint not implemented yet. Need to create PATCH /alertas/:id/descartar
-    console.warn("Backend endpoint /alertas/:id/descartar not implemented")
+  const handleViewAlert = (alert: Alert) => {
+    setSelectedAlert(alert)
+    setDetailDialogOpen(true)
+  }
 
-    // try {
-    //   await api.alerts.dismiss(id)
-    //   setAlerts(alerts.filter((alert) => alert.id !== id))
-    // } catch (error) {
-    //   console.error("[v0] Error dismissing alert:", error)
-    // }
+  const handleAlertSuccess = () => {
+    // Reload alerts after dismissing or creating work order
+    loadAlerts()
+    // Trigger refresh for other components (like dashboard stats)
+    if (onRefresh) {
+      onRefresh()
+    }
   }
 
   const getAlertColor = (tipo: string) => {
     // Kilometraje alerts are more critical than Fecha alerts
     return tipo === "Kilometraje" ? "text-destructive" : "text-orange-500"
   }
-  
+
   const getAlertBadge = (tipo: string) => {
     return tipo === "Kilometraje" ? "destructive" : "outline"
   }
@@ -83,7 +104,7 @@ export function ActiveAlerts() {
   }
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5" />
@@ -91,16 +112,20 @@ export function ActiveAlerts() {
         </CardTitle>
         <CardDescription>Notificaciones que requieren atención</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-hidden">
         {alerts.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">No hay alertas activas</p>
             <p className="text-xs text-muted-foreground mt-1">Todo está funcionando correctamente</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 h-[300px] overflow-y-auto pr-2">
             {alerts.map((alert) => (
-              <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
+              <div
+                key={alert.id}
+                className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+                onClick={() => handleViewAlert(alert)}
+              >
                 <AlertTriangle className={`h-5 w-5 mt-0.5 ${getAlertColor(alert.tipo_alerta)}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -123,14 +148,29 @@ export function ActiveAlerts() {
                     {formatDate(alert.fecha_generacion, "dd MMM yyyy HH:mm")}
                   </p>
                 </div>
-                <Button variant="ghost" size="icon-sm" onClick={() => handleDismiss(alert.id)} title="Descartar">
-                  <X className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleViewAlert(alert)
+                  }}
+                  title="Ver detalle"
+                >
+                  <Eye className="h-4 w-4" />
                 </Button>
               </div>
             ))}
           </div>
         )}
       </CardContent>
+
+      <AlertDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        alertId={selectedAlert?.id || null}
+        onSuccess={handleAlertSuccess}
+      />
     </Card>
   )
 }

@@ -21,7 +21,7 @@ export function Pagination({
   onPageChange,
   onPageSizeChange,
 }: PaginationProps) {
-  const startItem = currentPage * pageSize + 1
+  const startItem = totalItems === 0 ? 0 : currentPage * pageSize + 1
   const endItem = Math.min((currentPage + 1) * pageSize, totalItems)
 
   return (
@@ -50,7 +50,7 @@ export function Pagination({
 
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground">
-            Página {currentPage + 1} de {totalPages}
+            Página {totalItems === 0 ? 0 : currentPage + 1} de {totalPages}
           </p>
           <div className="flex items-center gap-1">
             <Button

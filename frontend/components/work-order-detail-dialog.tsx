@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
+import { authService } from "@/lib/auth"
 import {
   Dialog,
   DialogContent,
@@ -17,8 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Truck, User, DollarSign, Clock, Plus, CheckCircle2, Circle, Package } from "lucide-react"
+import { Calendar, Truck, User, DollarSign, Clock, Plus, CheckCircle2, Circle, Package, Wrench } from "lucide-react"
 import { TaskDialog } from "@/components/task-dialog"
+import { RegisterWorkDialog } from "@/components/register-work-dialog"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
 
@@ -35,38 +37,84 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
   const [tasks, setTasks] = useState<any[]>([])
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
+  const [registerWorkDialogOpen, setRegisterWorkDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<any>(null)
   const [mechanics, setMechanics] = useState<any[]>([])
   const [selectedMechanic, setSelectedMechanic] = useState<string>("")
   const [assigningMechanic, setAssigningMechanic] = useState(false)
+  const [tasksLoaded, setTasksLoaded] = useState(false)
+  const [mechanicsLoaded, setMechanicsLoaded] = useState(false)
+
+  // Check if current user can edit this work order
+  const canEdit = () => {
+    if (!workOrder) return false
+    
+    const currentUser = authService.getUser()
+    if (!currentUser) return false
+
+    // Admin and JefeMantenimiento can always edit
+    if (currentUser.rol === 'Administrador' || currentUser.rol === 'JefeMantenimiento') {
+      return true
+    }
+
+    // Mecanico can only edit if NOT finalized
+    if (currentUser.rol === 'Mecanico') {
+      return workOrder.estado !== 'Finalizada'
+    }
+
+    return false
+  }
 
   useEffect(() => {
     if (open && workOrder) {
-      loadTasks()
-      loadMechanics()
+      // Only load if not already loaded or if workOrder changed
+      if (!tasksLoaded || workOrder.id !== tasks[0]?.orden_trabajo_id) {
+        loadTasks()
+      }
+      if (!mechanicsLoaded) {
+        loadMechanics()
+      }
+      setNewStatus(workOrder.estado || "")
+      setSelectedMechanic(workOrder.mecanico?.id?.toString() || "")
+    } else {
+      // Reset when dialog closes
+      setTasksLoaded(false)
     }
-  }, [open, workOrder])
+  }, [open, workOrder?.id])
 
   const loadTasks = async () => {
-    if (!workOrder) return
+    if (!workOrder || loadingTasks) return
 
     try {
       setLoadingTasks(true)
       const response = await api.tasks.getByWorkOrder(workOrder.id)
       setTasks(response.data || [])
+      setTasksLoaded(true)
     } catch (error) {
       console.error("Error loading tasks:", error)
+      toast.error("Error al cargar las tareas")
     } finally {
       setLoadingTasks(false)
     }
   }
 
   const loadMechanics = async () => {
+    if (mechanicsLoaded) return
+    
+    // Only load mechanics if user can assign them (Admin or JefeMantenimiento)
+    const currentUser = authService.getUser()
+    if (!currentUser || currentUser.rol === 'Mecanico') {
+      setMechanicsLoaded(true) // Mark as loaded to prevent retries
+      return
+    }
+    
     try {
       const response = await api.users.getMechanics()
       setMechanics(response.data || [])
+      setMechanicsLoaded(true)
     } catch (error) {
       console.error("Error loading mechanics:", error)
+      setMechanicsLoaded(true) // Mark as loaded even on error to prevent infinite retries
     }
   }
 
@@ -78,9 +126,20 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
     try {
       setUpdating(true)
       await api.workOrders.updateStatus(workOrder.id, newStatus)
-      toast.success("Estado actualizado correctamente")
+      
+      // If finalizing, reload tasks to show auto-completed ones
+      if (newStatus === 'Finalizada') {
+        await loadTasks()
+        toast.success("Estado actualizado y tareas completadas automáticamente")
+      } else {
+        toast.success("Estado actualizado correctamente")
+      }
+      
       onUpdate()
-      onOpenChange(false)
+      // Don't close dialog immediately if finalized, let user see completed tasks
+      if (newStatus !== 'Finalizada') {
+        onOpenChange(false)
+      }
     } catch (error) {
       console.error("Error updating status:", error)
       toast.error("Error al actualizar el estado")
@@ -298,7 +357,8 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
 
           <Separator />
 
-            {/* Update Status */}
+          {/* Update Status - Only if user can edit */}
+          {canEdit() ? (
             <div className="space-y-2">
               <Label htmlFor="newStatus">Actualizar Estado</Label>
               <div className="flex items-center gap-2">
@@ -318,9 +378,19 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
                 </Button>
               </div>
             </div>
-          </TabsContent>
+          ) : (
+            <div className="bg-muted/50 border border-muted rounded-lg p-3 text-sm text-muted-foreground">
+              ℹ️ Esta orden de trabajo está finalizada. No se puede cambiar el estado.
+            </div>
+          )}
+        </TabsContent>
 
           <TabsContent value="tasks" className="space-y-4 mt-4">
+            {!canEdit() && workOrder.estado === 'Finalizada' && (
+              <div className="bg-muted/50 border border-muted rounded-lg p-3 text-sm text-muted-foreground">
+                ℹ️ Esta orden de trabajo está finalizada. Solo administradores y jefes de mantenimiento pueden editarla.
+              </div>
+            )}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -332,7 +402,7 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
                         : `${completedTasks} de ${totalTasks} tareas completadas`}
                     </CardDescription>
                   </div>
-                  <Button onClick={handleAddTask} size="sm">
+                  <Button onClick={handleAddTask} size="sm" disabled={!canEdit()}>
                     <Plus className="h-4 w-4 mr-2" />
                     Nueva Tarea
                   </Button>
@@ -345,10 +415,12 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-sm text-muted-foreground">No hay tareas registradas</p>
-                    <Button onClick={handleAddTask} variant="outline" className="mt-4">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar Primera Tarea
-                    </Button>
+                    {canEdit() && (
+                      <Button onClick={handleAddTask} variant="outline" className="mt-4">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Primera Tarea
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -359,14 +431,14 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
                       >
                         <div className="flex items-center gap-3 flex-1">
                           <button
-                            onClick={() => !task.completada && handleCompleteTask(task.id)}
-                            disabled={task.completada}
+                            onClick={() => !task.completada && canEdit() && handleCompleteTask(task.id)}
+                            disabled={task.completada || !canEdit()}
                             className="flex-shrink-0"
                           >
                             {task.completada ? (
                               <CheckCircle2 className="h-5 w-5 text-green-600" />
                             ) : (
-                              <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />
+                              <Circle className={`h-5 w-5 ${canEdit() ? 'text-muted-foreground hover:text-primary' : 'text-muted-foreground/50'}`} />
                             )}
                           </button>
                           <div className="flex-1">
@@ -398,6 +470,22 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
         </Tabs>
 
         <DialogFooter>
+          {/* Register Work Button - Only for assigned mechanic or managers */}
+          {(() => {
+            const user = authService.getUser()
+            const isMechanic = user?.rol === "Mecanico"
+            const isManager = user?.rol === "JefeMantenimiento" || user?.rol === "Administrador"
+            const isAssignedMechanic = workOrder?.mecanico?.id === user?.id
+            const canRegisterWork = (isMechanic && isAssignedMechanic) || isManager
+            const isInProgress = workOrder?.estado === "EnProgreso" || workOrder?.estado === "Asignada"
+
+            return canRegisterWork && isInProgress && (
+              <Button onClick={() => setRegisterWorkDialogOpen(true)} className="mr-auto">
+                <Wrench className="h-4 w-4 mr-2" />
+                Registrar Trabajo
+              </Button>
+            )
+          })()}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
@@ -410,6 +498,17 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
         task={selectedTask}
         workOrderId={workOrder?.id}
         onSave={handleTaskSaved}
+      />
+
+      <RegisterWorkDialog
+        open={registerWorkDialogOpen}
+        onOpenChange={setRegisterWorkDialogOpen}
+        workOrderId={workOrder?.id}
+        tasks={tasks}
+        onSuccess={() => {
+          loadTasks()
+          onUpdate()
+        }}
       />
     </Dialog>
   )

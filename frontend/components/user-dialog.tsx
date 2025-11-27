@@ -21,14 +21,34 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 
-const userSchema = z.object({
+// Password validation rules (shared)
+const passwordValidation = z.string()
+  .min(12, "La contraseña debe tener al menos 12 caracteres")
+  .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
+  .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
+  .regex(/\d/, "Debe contener al menos un número")
+  .regex(/[@$!%*?&#]/, "Debe contener al menos un carácter especial (@$!%*?&#)")
+
+// Schema for creating new user (password required)
+const createUserSchema = z.object({
   email: z.string().email("Email inválido"),
   nombre_completo: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").optional(),
+  password: passwordValidation,
   rol: z.enum(["Administrador", "JefeMantenimiento", "Mecanico"]),
 })
 
-type UserFormData = z.infer<typeof userSchema>
+// Schema for editing user (password optional - empty string or valid password)
+const editUserSchema = z.object({
+  email: z.string().email("Email inválido"),
+  nombre_completo: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
+  password: z.union([
+    z.string().length(0),
+    passwordValidation
+  ]).optional(),
+  rol: z.enum(["Administrador", "JefeMantenimiento", "Mecanico"]),
+})
+
+type UserFormData = z.infer<typeof createUserSchema>
 
 interface UserDialogProps {
   open: boolean
@@ -49,7 +69,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     setValue,
     watch,
   } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
+    resolver: zodResolver(isEdit ? editUserSchema : createUserSchema),
     defaultValues: {
       email: "",
       nombre_completo: "",
@@ -97,8 +117,43 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
       }
       onSave()
     } catch (error: any) {
-      console.error("[v0] Error saving user:", error)
-      toast.error(error.response?.data?.message || "Error al guardar el usuario")
+      console.error("Error saving user:", error)
+      
+      // Handle validation errors from backend
+      if (error.response?.data) {
+        const errorData = error.response.data
+        
+        // If it's an array of validation errors (from class-validator)
+        if (Array.isArray(errorData)) {
+          const messages = errorData
+            .map((err: any) => {
+              if (err.constraints) {
+                return Object.values(err.constraints).join(", ")
+              }
+              return null
+            })
+            .filter(Boolean)
+          
+          if (messages.length > 0) {
+            toast.error(messages.join(". "))
+          } else {
+            toast.error("Error de validación en los datos")
+          }
+        } 
+        // If it has a message property
+        else if (errorData.message) {
+          const message = Array.isArray(errorData.message) 
+            ? errorData.message.join(". ")
+            : errorData.message
+          toast.error(message)
+        } 
+        // Generic error
+        else {
+          toast.error("Error al guardar el usuario")
+        }
+      } else {
+        toast.error("Error al guardar el usuario")
+      }
     } finally {
       setLoading(false)
     }
@@ -161,12 +216,17 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
               <Input
                 id="password"
                 type="password"
-                placeholder={isEdit ? "••••••••" : "Mínimo 6 caracteres"}
+                placeholder={isEdit ? "••••••••" : "Mínimo 12 caracteres, mayúscula, minúscula, número y especial"}
                 {...register("password")}
                 aria-invalid={!!errors.password}
                 disabled={loading}
               />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              {!isEdit && (
+                <p className="text-xs text-muted-foreground">
+                  Debe tener: 12+ caracteres, mayúscula, minúscula, número y carácter especial (@$!%*?&#)
+                </p>
+              )}
             </div>
           </div>
 

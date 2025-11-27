@@ -19,13 +19,13 @@ interface Stats {
   criticalAlerts: number
 }
 
-export function DashboardStats() {
+export function DashboardStats({ refreshTrigger = 0 }: { refreshTrigger?: number }) {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadStats()
-  }, [])
+  }, [refreshTrigger])
 
   const loadStats = async () => {
     try {
@@ -50,8 +50,8 @@ export function DashboardStats() {
         totalWorkOrders: workOrders.length,
         pendingWorkOrders: workOrders.filter((wo: any) => wo.estado === "Pendiente").length,
         completedWorkOrders: workOrders.filter((wo: any) => wo.estado === "Finalizada").length,
-        activeAlerts: alerts.length,
-        criticalAlerts: alerts.filter((a: any) => a.tipo_alerta === "Kilometraje").length,
+        activeAlerts: alerts.filter((a: any) => a.estado === "Activa").length,
+        criticalAlerts: alerts.filter((a: any) => a.estado === "Activa" && a.tipo_alerta === "Kilometraje").length,
       }
 
       setStats(statsData)

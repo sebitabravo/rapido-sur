@@ -33,10 +33,27 @@ export function RecentWorkOrders() {
   const loadWorkOrders = async () => {
     try {
       const response = await api.workOrders.getAll()
-      const allOrders = response.data.items || []
-      setWorkOrders(allOrders.slice(0, 5))
+      let allOrders = response.data.items || response.data || []
+
+      // Map backend snake_case to frontend camelCase
+      allOrders = allOrders.map((order: any) => ({
+        ...order,
+        fechaCreacion: order.fecha_creacion || order.fechaCreacion,
+        fechaInicio: order.fecha_inicio || order.fechaInicio,
+        fechaCierre: order.fecha_cierre || order.fechaCierre,
+        fechaFinalizacion: order.fecha_cierre || order.fechaFinalizacion,
+        costoEstimado: order.costo_estimado || order.costoEstimado,
+        costoReal: order.costo_real || order.costoReal,
+        mecanico: order.mecanico ? {
+          id: order.mecanico.id,
+          nombre: order.mecanico.nombre_completo || order.mecanico.nombre,
+          email: order.mecanico.email,
+        } : null,
+      }))
+
+      setWorkOrders(allOrders.slice(0, 20))
     } catch (error) {
-      console.error("[v0] Error loading work orders:", error)
+      console.error("Error loading work orders:", error)
     } finally {
       setLoading(false)
     }
@@ -86,46 +103,48 @@ export function RecentWorkOrders() {
   }
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle>Órdenes de Trabajo Recientes</CardTitle>
         <CardDescription>Últimas órdenes de mantenimiento registradas</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-hidden">
         {workOrders.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No hay órdenes de trabajo registradas</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vehículo</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Prioridad</TableHead>
-                <TableHead>Fecha</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {workOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{order.vehiculo.patente}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.vehiculo.marca} {order.vehiculo.modelo}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{order.tipo === "Preventivo" ? "Preventivo" : "Correctivo"}</TableCell>
-                  <TableCell>{getStatusBadge(order.estado)}</TableCell>
-                  <TableCell>{getPriorityBadge(order.prioridad)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(order.fechaCreacion, "dd MMM yyyy")}
-                  </TableCell>
+          <div className="h-[300px] overflow-y-auto pr-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Vehículo</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Prioridad</TableHead>
+                  <TableHead>Fecha</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {workOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{order.vehiculo.patente}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {order.vehiculo.marca} {order.vehiculo.modelo}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{order.tipo === "Preventivo" ? "Preventivo" : "Correctivo"}</TableCell>
+                    <TableCell>{getStatusBadge(order.estado)}</TableCell>
+                    <TableCell>{getPriorityBadge(order.prioridad)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(order.fechaCreacion, "dd MMM yyyy")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
