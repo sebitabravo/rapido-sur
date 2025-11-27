@@ -88,11 +88,12 @@ export class TasksController {
   /**
    * GET /tareas/orden-trabajo/:ordenTrabajoId
    * Get all tasks for a specific work order
+   * Mechanics only see tasks assigned to them
    */
   @ApiOperation({
     summary: "Obtener tareas de una orden de trabajo",
     description:
-      "Obtiene todas las tareas asociadas a una orden de trabajo específica.",
+      "Obtiene todas las tareas asociadas a una orden de trabajo específica. Los mecánicos solo ven las tareas asignadas a ellos.",
   })
   @ApiParam({
     name: "ordenTrabajoId",
@@ -107,8 +108,9 @@ export class TasksController {
   @Get("orden-trabajo/:ordenTrabajoId")
   async findByWorkOrder(
     @Param("ordenTrabajoId", ParseIntPipe) ordenTrabajoId: number,
+    @Request() req: any,
   ): Promise<Tarea[]> {
-    return this.tasksService.findByWorkOrder(ordenTrabajoId);
+    return this.tasksService.findByWorkOrder(ordenTrabajoId, req.user);
   }
 
   /**

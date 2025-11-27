@@ -236,10 +236,18 @@ export class TasksService {
 
   /**
    * Find all tasks by work order ID
+   * Filters by mechanic if user is a Mecanico (only sees their assigned tasks)
    */
-  async findByWorkOrder(ordenTrabajoId: number): Promise<Tarea[]> {
+  async findByWorkOrder(ordenTrabajoId: number, user: Usuario): Promise<Tarea[]> {
+    const where: any = { orden_trabajo: { id: ordenTrabajoId } };
+
+    // If user is a mechanic, filter by tasks assigned to them
+    if (user.rol === RolUsuario.Mecanico) {
+      where.mecanico_asignado = { id: user.id };
+    }
+
     return this.tareaRepository.find({
-      where: { orden_trabajo: { id: ordenTrabajoId } },
+      where,
       relations: ["mecanico_asignado", "detalles_repuestos", "detalles_repuestos.repuesto"],
       order: { id: "ASC" },
     });
