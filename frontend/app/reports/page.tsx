@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
-import { FileText, ArrowLeft, DollarSign, TrendingDown, Download } from "lucide-react"
+import { FileText, ArrowLeft, DollarSign, TrendingDown, Download, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { format, subMonths } from "date-fns"
 import { exportToCSV } from "@/lib/export-utils"
@@ -35,11 +35,22 @@ interface CostReport {
   costoTotal: number
 }
 
+interface ReportHistory {
+  id: number
+  tipo: string
+  fechaInicio: string
+  fechaFin: string
+  fechaGeneracion: string
+  usuario?: string
+}
+
 export default function ReportsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [unavailabilityData, setUnavailabilityData] = useState<UnavailabilityReport[]>([])
   const [costData, setCostData] = useState<CostReport[]>([])
+  const [historyData, setHistoryData] = useState<ReportHistory[]>([])
+  const [activeTab, setActiveTab] = useState("unavailability")
 
   // Default to last 30 days
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 1), "yyyy-MM-dd"))
@@ -50,16 +61,38 @@ export default function ReportsPage() {
       router.push("/login")
       return
     }
+    loadHistory()
   }, [router])
 
-  const loadUnavailabilityReport = async () => {
+  const loadHistory = async () => {
+    try {
+      const response = await api.reports.history()
+      setHistoryData(response.data)
+    } catch (error) {
+      console.error("Error loading history:", error)
+    }
+  }
+
+  const loadUnavailabilityReport = async (customStartDate?: string, customEndDate?: string) => {
     try {
       setLoading(true)
       const response = await api.reports.unavailability({
-        fecha_inicio: startDate,
-        fecha_fin: endDate,
+        fecha_inicio: customStartDate || startDate,
+        fecha_fin: customEndDate || endDate,
       })
-      setUnavailabilityData(response.data || [])
+
+      // Map backend snake_case to frontend camelCase
+      const mappedData = (response.data || []).map((item: any) => ({
+        vehiculoId: item.vehiculo_id,
+        patente: item.patente,
+        marca: item.marca,
+        modelo: item.modelo,
+        totalOrdenes: parseInt(item.total_ordenes),
+        diasInactividad: parseFloat(item.dias_inactividad || 0),
+        promedioDias: parseFloat(item.promedio_dias || 0)
+      }))
+
+      setUnavailabilityData(mappedData)
     } catch (error) {
       console.error("[v0] Error loading unavailability report:", error)
       toast.error("Error al cargar el reporte de indisponibilidad")
@@ -68,14 +101,26 @@ export default function ReportsPage() {
     }
   }
 
-  const loadCostReport = async () => {
+  const loadCostReport = async (customStartDate?: string, customEndDate?: string) => {
     try {
       setLoading(true)
       const response = await api.reports.costs({
-        fecha_inicio: startDate,
-        fecha_fin: endDate,
+        fecha_inicio: customStartDate || startDate,
+        fecha_fin: customEndDate || endDate,
       })
-      setCostData(response.data || [])
+
+      // The backend returns an object with 'costos_por_vehiculo' array
+      const rawData = response.data?.costos_por_vehiculo || []
+
+      // Map backend snake_case to frontend camelCase
+      const mappedData = rawData.map((item: any) => ({
+        vehiculoId: item.vehiculo_id,
+        patente: item.patente,
+        totalOrdenes: parseInt(item.total_ordenes),
+        costoTotal: parseFloat(item.costo_total || 0)
+      }))
+
+      setCostData(mappedData)
     } catch (error) {
       console.error("[v0] Error loading cost report:", error)
       toast.error("Error al cargar el reporte de costos")
@@ -84,12 +129,66 @@ export default function ReportsPage() {
     }
   }
 
-  const handleGenerateUnavailabilityReport = () => {
-    loadUnavailabilityReport()
+  const handleGenerateUnavailabilityReport = async () => {
+    await loadUnavailabilityReport()
+    // Save to history after successful generation
+    try {
+      await api.reports.saveHistory({
+        tipo: 'Indisponibilidad',
+        fecha_inicio: startDate,
+        fecha_fin: endDate
+      })
+      await loadHistory() // Refresh history list
+    } catch (error) {
+      console.error("Error saving to history:", error)
+    }
   }
 
-  const handleGenerateCostReport = () => {
-    loadCostReport()
+  const handleGenerateCostReport = async () => {
+    await loadCostReport()
+    // Save to history after successful generation
+    try {
+      await api.reports.saveHistory({
+        tipo: 'Costos',
+        fecha_inicio: startDate,
+        fecha_fin: endDate
+      })
+      await loadHistory() // Refresh history list
+    } catch (error) {
+      console.error("Error saving to history:", error)
+    }
+  }
+
+  const handleViewHistory = async (item: ReportHistory) => {
+    setStartDate(item.fechaInicio)
+    setEndDate(item.fechaFin)
+
+    if (item.tipo === 'Indisponibilidad') {
+      setActiveTab('unavailability')
+      // Load report immediately with history dates
+      await loadUnavailabilityReport(item.fechaInicio, item.fechaFin)
+      toast.success("Reporte cargado desde el historial")
+    } else if (item.tipo === 'Costos') {
+      setActiveTab('costs')
+      // Load report immediately with history dates
+      await loadCostReport(item.fechaInicio, item.fechaFin)
+      toast.success("Reporte cargado desde el historial")
+    }
+  }
+
+  const handleDeleteHistory = async (id: number) => {
+    if (!confirm("¿Está seguro que desea eliminar este reporte del historial?")) {
+      return
+    }
+
+    try {
+      await api.reports.deleteHistory(id)
+      toast.success("Reporte eliminado del historial")
+      await loadHistory() // Refresh history list
+    } catch (error) {
+      console.error("Error deleting history:", error)
+      toast.error("Error al eliminar el reporte del historial")
+    }
   }
 
   const handleExportUnavailability = () => {
@@ -97,7 +196,7 @@ export default function ReportsPage() {
       toast.error("No hay datos para exportar")
       return
     }
-    
+
     const exportData = unavailabilityData.map(item => ({
       Patente: item.patente,
       Marca: item.marca,
@@ -106,7 +205,7 @@ export default function ReportsPage() {
       "Días Inactividad": item.diasInactividad || 0,
       "Promedio Días": item.promedioDias ? parseFloat(item.promedioDias.toString()).toFixed(1) : "0.0"
     }))
-    
+
     exportToCSV(exportData, `reporte-indisponibilidad-${format(new Date(), "yyyy-MM-dd")}`)
     toast.success("Reporte exportado exitosamente")
   }
@@ -116,13 +215,13 @@ export default function ReportsPage() {
       toast.error("No hay datos para exportar")
       return
     }
-    
+
     const exportData = costData.map(item => ({
       Patente: item.patente,
       "Total Órdenes": item.totalOrdenes,
       "Costo Total": item.costoTotal || 0
     }))
-    
+
     exportToCSV(exportData, `reporte-costos-${format(new Date(), "yyyy-MM-dd")}`)
     toast.success("Reporte exportado exitosamente")
   }
@@ -191,15 +290,19 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="unavailability" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="unavailability">
-              <TrendingDown className="h-4 w-4" />
+              <TrendingDown className="h-4 w-4 mr-2" />
               Indisponibilidad
             </TabsTrigger>
             <TabsTrigger value="costs">
-              <DollarSign className="h-4 w-4" />
+              <DollarSign className="h-4 w-4 mr-2" />
               Costos
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <FileText className="h-4 w-4 mr-2" />
+              Historial
             </TabsTrigger>
           </TabsList>
 
@@ -441,6 +544,62 @@ export default function ReportsPage() {
                     </Table>
                   </>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* History Tab */}
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Historial de Reportes</CardTitle>
+                <CardDescription>Registro de reportes generados anteriormente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha Generación</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Periodo</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historyData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          No hay historial disponible
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      historyData.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{format(new Date(item.fechaGeneracion), "dd/MM/yyyy HH:mm")}</TableCell>
+                          <TableCell>{item.tipo}</TableCell>
+                          <TableCell>
+                            {format(new Date(item.fechaInicio), "dd/MM/yyyy")} - {format(new Date(item.fechaFin), "dd/MM/yyyy")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleViewHistory(item)}>
+                                Ver
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleDeleteHistory(item.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

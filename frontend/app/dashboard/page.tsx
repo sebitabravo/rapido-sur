@@ -13,6 +13,7 @@ import { DashboardStats } from "@/components/dashboard-stats"
 import { RecentWorkOrders } from "@/components/recent-work-orders"
 import { ActiveAlerts } from "@/components/active-alerts"
 import { MaintenanceTrends } from "@/components/maintenance-trends"
+import { MechanicDashboard } from "@/components/mechanic-dashboard"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -29,6 +30,12 @@ export default function DashboardPage() {
     // Load initial data
     setLoading(false)
   }, [router])
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1)
+  }
 
   const handleLogout = () => {
     authService.clearAuth()
@@ -72,6 +79,7 @@ export default function DashboardPage() {
   }
 
   const isAdmin = user?.rol === "Administrador"
+  const isMechanic = user?.rol === "Mecanico"
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,10 +100,10 @@ export default function DashboardPage() {
                 {user?.rol}
               </Badge>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => router.push("/profile")} 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/profile")}
               title="Mi perfil"
               className="relative"
             >
@@ -148,101 +156,25 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">
-              <TrendingUp className="h-4 w-4" />
-              Resumen
-            </TabsTrigger>
-            <TabsTrigger value="vehicles">
-              <Truck className="h-4 w-4" />
-              Vehículos
-            </TabsTrigger>
-            <TabsTrigger value="maintenance">
-              <Wrench className="h-4 w-4" />
-              Mantenimiento
-            </TabsTrigger>
-            <TabsTrigger value="alerts">
-              <AlertTriangle className="h-4 w-4" />
-              Alertas
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
+        {/* Mechanic Dashboard - Specialized view for mechanics */}
+        {isMechanic ? (
+          <MechanicDashboard />
+        ) : (
+          /* Admin/Manager Dashboard - Full view */
+          <div className="space-y-6">
             {/* Key Metrics */}
-            <DashboardStats />
+            <DashboardStats refreshTrigger={refreshTrigger} />
 
             {/* Charts and Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <MaintenanceTrends />
-              <ActiveAlerts />
+              <ActiveAlerts onRefresh={handleRefresh} />
             </div>
 
             {/* Recent Work Orders */}
             <RecentWorkOrders />
-          </TabsContent>
-
-          <TabsContent value="vehicles">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Vehículos</CardTitle>
-                <CardDescription>Administre la flota de vehículos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Acceda al módulo completo de gestión de vehículos
-                  </p>
-                  <Button onClick={handleNavigateToVehicles}>
-                    <Truck className="h-4 w-4" />
-                    Ir a Vehículos
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="maintenance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Órdenes de Trabajo</CardTitle>
-                <CardDescription>Gestione las órdenes de mantenimiento</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">Acceda al módulo completo de órdenes de trabajo</p>
-                  <Button onClick={handleNavigateToWorkOrders}>
-                    <Wrench className="h-4 w-4" />
-                    Ir a Órdenes de Trabajo
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="alerts">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sistema de Alertas</CardTitle>
-                <CardDescription>Monitoree alertas y notificaciones</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Acceda al módulo completo de alertas y notificaciones
-                  </p>
-                  <Button onClick={handleNavigateToAlerts}>
-                    <AlertTriangle className="h-4 w-4" />
-                    Ir a Alertas
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </main>
     </div>
   )

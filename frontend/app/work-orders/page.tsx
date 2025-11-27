@@ -89,6 +89,22 @@ export default function WorkOrdersPage() {
       // Ensure orders is always an array
       let orders = Array.isArray(response.data) ? response.data : (response.data?.items || [])
 
+      // Map backend snake_case to frontend camelCase
+      orders = orders.map((order: any) => ({
+        ...order,
+        fechaCreacion: order.fecha_creacion || order.fechaCreacion,
+        fechaInicio: order.fecha_inicio || order.fechaInicio,
+        fechaCierre: order.fecha_cierre || order.fechaCierre,
+        fechaFinalizacion: order.fecha_cierre || order.fechaFinalizacion,
+        costoEstimado: order.costo_estimado || order.costoEstimado,
+        costoReal: order.costo_real || order.costoReal,
+        mecanico: order.mecanico ? {
+          id: order.mecanico.id,
+          nombre: order.mecanico.nombre_completo || order.mecanico.nombre,
+          email: order.mecanico.email,
+        } : null,
+      }))
+
       // Client-side filtering for search term
       if (debouncedSearchTerm) {
         const searchLower = debouncedSearchTerm.toLowerCase()
@@ -125,7 +141,7 @@ export default function WorkOrdersPage() {
       setTotalPages(Math.ceil(totalOrders / pageSize))
       setTotalItems(totalOrders)
     } catch (error) {
-      console.error("[v0] Error loading work orders:", error)
+      console.error("Error loading work orders:", error)
       toast.error("Error al cargar las órdenes de trabajo")
     } finally {
       setLoading(false)
@@ -199,6 +215,10 @@ export default function WorkOrdersPage() {
   const inProgressOrders = workOrders.filter((wo) => wo.estado === "EnProgreso" || wo.estado === "Asignada")
   const completedOrders = workOrders.filter((wo) => wo.estado === "Finalizada")
 
+  // Check if user can create work orders (only Admin and Maintenance Manager)
+  const currentUser = authService.getUser()
+  const canCreateOrder = currentUser?.rol === "Administrador" || currentUser?.rol === "JefeMantenimiento"
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -214,10 +234,12 @@ export default function WorkOrdersPage() {
               <p className="text-sm text-muted-foreground">Gestione las órdenes de mantenimiento</p>
             </div>
           </div>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4" />
-            Nueva Orden
-          </Button>
+          {canCreateOrder && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4" />
+              Nueva Orden
+            </Button>
+          )}
         </div>
       </header>
 
@@ -318,7 +340,7 @@ export default function WorkOrdersPage() {
                     ? "No se encontraron órdenes con los filtros aplicados"
                     : "No hay órdenes de trabajo registradas"}
                 </p>
-                {!searchTerm && statusFilter === "all" && prioridadFilter === "all" && tipoFilter === "all" && (
+                {!searchTerm && statusFilter === "all" && prioridadFilter === "all" && tipoFilter === "all" && canCreateOrder && (
                   <Button onClick={handleAdd} className="mt-4">
                     <Plus className="h-4 w-4" />
                     Crear Primera Orden
@@ -377,9 +399,11 @@ export default function WorkOrdersPage() {
                             <Button variant="ghost" size="icon-sm" onClick={() => handleViewDetail(order)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(order)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            {canCreateOrder && order.estado === "Pendiente" && (
+                              <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(order)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

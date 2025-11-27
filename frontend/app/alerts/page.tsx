@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
-import { AlertTriangle, ArrowLeft, X, CheckCircle, Bell, PlayCircle, Sparkles } from "lucide-react"
+import { AlertTriangle, ArrowLeft, X, CheckCircle, Bell, PlayCircle, Sparkles, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
+import { AlertDetailDialog } from "@/components/alert-detail-dialog"
 
 interface Alert {
   id: number
@@ -19,6 +20,7 @@ interface Alert {
   mensaje: string
   fecha_generacion: string
   email_enviado: boolean
+  estado: string
   vehiculo?: {
     id: number
     patente: string
@@ -31,9 +33,11 @@ export default function AlertsPage() {
   const router = useRouter()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<"all" | "active" | "dismissed">("active")
+  const [filter, setFilter] = useState<"all" | "active" | "dismissed">("all")
   const [verificando, setVerificando] = useState(false)
   const [creandoPrueba, setCreandoPrueba] = useState(false)
+  const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -47,10 +51,15 @@ export default function AlertsPage() {
     try {
       setLoading(true)
       const response = await api.alerts.getAll()
-      const allAlerts = response.data || []
+      let allAlerts = response.data || []
 
-      // All alerts from DB are "active" by definition
-      // They are deleted when WO is created (not soft-deleted)
+      // Filter based on selected filter
+      if (filter === "active") {
+        allAlerts = allAlerts.filter((a: Alert) => a.estado === "Activa" || a.estado === "EnProceso")
+      } else if (filter === "dismissed") {
+        allAlerts = allAlerts.filter((a: Alert) => a.estado === "Descartada" || a.estado === "Atendida")
+      }
+
       setAlerts(allAlerts)
     } catch (error) {
       console.error("[v0] Error loading alerts:", error)
@@ -60,15 +69,13 @@ export default function AlertsPage() {
     }
   }
 
-  const handleDismiss = async (id: number) => {
-    // Delete alert when dismissed (backend deletes from DB)
-    try {
-      // TODO: Create DELETE endpoint if needed, or alerts are auto-deleted when WO is created
-      toast.info("Las alertas se eliminan automáticamente al crear la orden de trabajo")
-    } catch (error) {
-      console.error("[v0] Error dismissing alert:", error)
-      toast.error("Error al descartar la alerta")
-    }
+  const handleViewDetails = (id: number) => {
+    setSelectedAlertId(id)
+    setDetailDialogOpen(true)
+  }
+
+  const handleDialogSuccess = () => {
+    loadAlerts()
   }
 
   const handleVerificarAhora = async () => {
@@ -206,10 +213,18 @@ export default function AlertsPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="mb-4">
-              <TabsList>
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="all">
-                  <Bell className="h-4 w-4" />
+                  <Bell className="h-4 w-4 mr-2" />
                   Todas
+                </TabsTrigger>
+                <TabsTrigger value="active">
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Activas
+                </TabsTrigger>
+                <TabsTrigger value="dismissed">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Archivadas
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -247,9 +262,24 @@ export default function AlertsPage() {
                             {alert.vehiculo.patente}
                           </Badge>
                         )}
-                        {!alert.email_enviado && (
+                        {alert.estado === "Activa" && (
+                          <Badge variant="destructive" className="text-xs">
+                            Activa
+                          </Badge>
+                        )}
+                        {alert.estado === "EnProceso" && (
+                          <Badge variant="default" className="text-xs">
+                            En Proceso
+                          </Badge>
+                        )}
+                        {alert.estado === "Atendida" && (
                           <Badge variant="outline" className="text-xs">
-                            Nueva
+                            Atendida
+                          </Badge>
+                        )}
+                        {alert.estado === "Descartada" && (
+                          <Badge variant="secondary" className="text-xs">
+                            Descartada
                           </Badge>
                         )}
                       </div>
@@ -269,11 +299,12 @@ export default function AlertsPage() {
 
                     <Button
                       variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleDismiss(alert.id)}
-                      title="Información"
+                      size="sm"
+                      onClick={() => handleViewDetails(alert.id)}
+                      title="Ver detalles"
                     >
-                      <X className="h-4 w-4" />
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Detalles
                     </Button>
                   </div>
                 ))}
@@ -281,6 +312,14 @@ export default function AlertsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Alert Detail Dialog */}
+        <AlertDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          alertId={selectedAlertId}
+          onSuccess={handleDialogSuccess}
+        />
 
         {/* Alert Types Info */}
         <Card className="mt-6">

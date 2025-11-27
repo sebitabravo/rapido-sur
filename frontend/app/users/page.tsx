@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SkeletonTable } from "@/components/ui/skeleton-table"
 import { Pagination } from "@/components/pagination"
 import { useDebounce } from "@/hooks/use-debounce"
-import { Plus, Search, Users, ArrowLeft, Edit, Trash2, Shield, ArrowUpDown } from "lucide-react"
+import { Plus, Search, Users, ArrowLeft, Edit, Trash2, Shield, ArrowUpDown, Ban, CheckCircle } from "lucide-react"
 import { UserDialog } from "@/components/user-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
@@ -84,10 +84,10 @@ export default function UsersPage() {
       }
 
       const response = await api.users.getAll(params)
-      
+
       // Backend returns array directly, not paginated response
       let allUsers: User[] = Array.isArray(response.data) ? response.data : response.data.items || []
-      
+
       // Apply client-side filtering if needed
       if (debouncedSearchTerm) {
         const searchLower = debouncedSearchTerm.toLowerCase()
@@ -97,11 +97,11 @@ export default function UsersPage() {
             u.email?.toLowerCase().includes(searchLower)
         )
       }
-      
+
       if (roleFilter !== "all") {
         allUsers = allUsers.filter((u) => u.rol === roleFilter)
       }
-      
+
       // Apply client-side sorting
       allUsers.sort((a, b) => {
         const aVal = a[sortBy as keyof User] || ''
@@ -109,7 +109,7 @@ export default function UsersPage() {
         const comparison = String(aVal).localeCompare(String(bVal))
         return sortOrder === 'asc' ? comparison : -comparison
       })
-      
+
       // Calculate pagination
       const total = allUsers.length
       const pages = Math.ceil(total / pageSize)
@@ -152,13 +152,24 @@ export default function UsersPage() {
 
     try {
       await api.users.delete(userToDelete.id)
-      toast.success("Usuario eliminado correctamente")
+      toast.success("Usuario desactivado correctamente")
       loadUsers()
       setDeleteDialogOpen(false)
       setUserToDelete(null)
     } catch (error) {
-      console.error("[v0] Error deleting user:", error)
-      toast.error("Error al eliminar el usuario")
+      console.error("[v0] Error deactivating user:", error)
+      toast.error("Error al desactivar el usuario")
+    }
+  }
+
+  const handleActivate = async (user: User) => {
+    try {
+      await api.users.update(user.id, { activo: true })
+      toast.success("Usuario activado correctamente")
+      loadUsers()
+    } catch (error) {
+      console.error("[v0] Error activating user:", error)
+      toast.error("Error al activar el usuario")
     }
   }
 
@@ -191,13 +202,13 @@ export default function UsersPage() {
       JefeMantenimiento: "default",
       Mecanico: "secondary",
     }
-    
+
     const labels: Record<string, string> = {
       Administrador: "Administrador",
       JefeMantenimiento: "Jefe de Mantenimiento",
       Mecanico: "Mecánico",
     }
-    
+
     return <Badge variant={variants[role] || "outline"}>{labels[role] || role}</Badge>
   }
 
@@ -341,6 +352,7 @@ export default function UsersPage() {
                         </Button>
                       </TableHead>
                       <TableHead>Rol</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -360,20 +372,38 @@ export default function UsersPage() {
                         <TableCell>{user.username}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{getRoleBadge(user.rol)}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.activo ? "default" : "destructive"}>
+                            {user.activo ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(user)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => handleDeleteClick(user)}
-                              className="text-destructive hover:text-destructive"
-                              disabled={user.id === currentUser?.id}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {user.activo ? (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleDeleteClick(user)}
+                                className="text-destructive hover:text-destructive"
+                                disabled={user.id === currentUser?.id}
+                                title="Desactivar usuario"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleActivate(user)}
+                                className="text-green-600 hover:text-green-700"
+                                title="Activar usuario"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -440,8 +470,8 @@ export default function UsersPage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteConfirm}
-        title="Eliminar Usuario"
-        description={`¿Está seguro que desea eliminar al usuario ${userToDelete?.nombre}? Esta acción no se puede deshacer.`}
+        title="Desactivar Usuario"
+        description={`¿Está seguro que desea desactivar al usuario ${userToDelete?.nombre_completo}? Podrá reactivarlo posteriormente.`}
       />
     </div>
   )
