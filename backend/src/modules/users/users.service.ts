@@ -24,7 +24,7 @@ export class UsersService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepo: Repository<Usuario>,
-  ) {}
+  ) { }
 
   /**
    * Create new user with hashed password
@@ -180,12 +180,13 @@ export class UsersService {
       }
     }
 
-    // Mark as inactive AND soft delete (sets deleted_at)
+    // Mark as inactive
     usuario.activo = false;
     await this.usuarioRepo.save(usuario);
 
-    // Perform TypeORM soft delete (sets deleted_at timestamp)
-    await this.usuarioRepo.softRemove(usuario);
+    this.logger.warn(
+      `User deactivated: ${usuario.email} (ID: ${id}) - Role: ${usuario.rol}`,
+    );
 
     this.logger.warn(
       `User soft deleted: ${usuario.email} (ID: ${id}) - Role: ${usuario.rol}`,
