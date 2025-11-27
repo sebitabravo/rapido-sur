@@ -1,61 +1,53 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import * as nodemailer from "nodemailer";
-import { Transporter } from "nodemailer";
+import { Resend } from 'resend';
 import { Alerta } from "../alerts/entities/alerta.entity";
 
 @Injectable()
 export class MailService {
-  private transporter: Transporter;
+  private resend: Resend;
   private readonly logger = new Logger(MailService.name);
 
   constructor(private configService: ConfigService) {
-    this.initializeTransporter();
+    this.initializeResend();
   }
 
   /**
-   * Initialize nodemailer transporter with SMTP configuration from environment variables
+   * Initialize Resend client with API key from environment variables
    */
-  private initializeTransporter() {
-    const mailConfig = {
-      host: this.configService.get<string>("MAIL_HOST"),
-      port: this.configService.get<number>("MAIL_PORT"),
-      secure: this.configService.get<boolean>("MAIL_SECURE"),
-      auth: {
-        user: this.configService.get<string>("MAIL_USER"),
-        pass: this.configService.get<string>("MAIL_PASSWORD"),
-      },
-    };
+  private initializeResend() {
+    const apiKey = this.configService.get<string>("RESEND_API_KEY");
+    
+    if (!apiKey) {
+      this.logger.error("RESEND_API_KEY not configured");
+      throw new Error("RESEND_API_KEY not configured in environment variables");
+    }
 
-    this.transporter = nodemailer.createTransport(mailConfig);
-
-    // Verify transporter configuration
-    this.transporter.verify((error: Error | null) => {
-      if (error) {
-        this.logger.error("Error configuring mail transporter:", error);
-      } else {
-        this.logger.log("Mail transporter configured successfully");
-      }
-    });
+    this.resend = new Resend(apiKey);
+    this.logger.log("Resend client initialized successfully");
   }
 
   /**
-   * Send a generic email
+   * Send a generic email using Resend
    * @param to Recipient email address
    * @param subject Email subject
    * @param html HTML content of the email
    */
   async sendMail(to: string, subject: string, html: string): Promise<void> {
     try {
-      const mailOptions = {
-        from: this.configService.get<string>("MAIL_FROM"),
-        to,
+      const { data, error } = await this.resend.emails.send({
+        from: this.configService.get<string>("MAIL_FROM") || 'Rápido Sur <noreply@send.sbravo.app>',
+        to: [to],
         subject,
         html,
-      };
+      });
 
-      await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email sent successfully to ${to}`);
+      if (error) {
+        this.logger.error(`Failed to send email to ${to}:`, error);
+        throw error;
+      }
+
+      this.logger.log(`Email sent successfully to ${to}`, data);
     } catch (error: unknown) {
       this.logger.error(`Failed to send email to ${to}:`, error);
       throw error;
@@ -207,6 +199,238 @@ export class MailService {
     await this.sendMail(
       mechanicEmail,
       `Nueva Orden de Trabajo: ${workOrderNumber}`,
+      html,
+    );
+  }
+
+  /**
+   * Send work order creation notification to mechanic and manager
+   * @param mechanicEmail Mechanic's email (can be null if not assigned)
+   * @param mechanicName Mechanic's name
+   * @param managerEmail Manager's email
+   * @param workOrderNumber Work order number
+   * @param vehicleInfo Vehicle information
+   * @param tipo Type of work order (Preventivo/Correctivo)
+   */
+  async sendWorkOrderCreated(
+    mechanicEmail: string | null,
+    mechanicName: string | null,
+    managerEmail: string,
+    workOrderNumber: string,
+    vehicleInfo: { patente: string; marca: string; modelo: string },
+    tipo: string,
+  ): Promise<void> {
+    const vehicleDisplay = `${vehicleInfo.marca} ${vehicleInfo.modelo} (${vehicleInfo.patente})`;
+
+    // Email to manager
+    const managerHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Nueva Orden de Trabajo Creada</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #1976d2;">📝 Nueva Orden de Trabajo Creada</h1>
+            <p>Se ha creado una nueva orden de trabajo en el sistema:</p>
+
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 8px 0;"><strong>Número de OT:</strong> ${workOrderNumber}</p>
+              <p style="margin: 8px 0;"><strong>Tipo:</strong> ${tipo}</p>
+              <p style="margin: 8px 0;"><strong>Vehículo:</strong> ${vehicleDisplay}</p>
+              <p style="margin: 8px 0;"><strong>Mecánico:</strong> ${mechanicName || 'Sin asignar'}</p>
+            </div>
+
+            <p>
+              <a href="${this.configService.get<string>("FRONTEND_URL")}/ordenes-trabajo"
+                 style="background-color: #1976d2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Ver Orden de Trabajo
+              </a>
+            </p>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">
+              Este es un mensaje automático del Sistema de Gestión de Mantenimiento - Rápido Sur
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await this.sendMail(
+      managerEmail,
+      `✅ Nueva OT Creada: ${workOrderNumber}`,
+      managerHtml,
+    );
+
+    // Email to mechanic if assigned
+    if (mechanicEmail && mechanicName) {
+      const mechanicHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Nueva Orden de Trabajo Asignada</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #1976d2;">🔧 Nueva Orden de Trabajo Asignada</h1>
+              <p>Hola <strong>${mechanicName}</strong>,</p>
+              <p>Se te ha asignado una nueva orden de trabajo:</p>
+
+              <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 8px 0;"><strong>Número de OT:</strong> ${workOrderNumber}</p>
+                <p style="margin: 8px 0;"><strong>Tipo:</strong> ${tipo}</p>
+                <p style="margin: 8px 0;"><strong>Vehículo:</strong> ${vehicleDisplay}</p>
+              </div>
+
+              <p>
+                <a href="${this.configService.get<string>("FRONTEND_URL")}/ordenes-trabajo"
+                   style="background-color: #1976d2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                  Ver Orden de Trabajo
+                </a>
+              </p>
+
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+              <p style="color: #666; font-size: 12px;">
+                Este es un mensaje automático del Sistema de Gestión de Mantenimiento - Rápido Sur
+              </p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await this.sendMail(
+        mechanicEmail,
+        `🔧 Nueva OT Asignada: ${workOrderNumber}`,
+        mechanicHtml,
+      );
+    }
+  }
+
+  /**
+   * Send work order update notification to mechanic and manager
+   * @param mechanicEmail Mechanic's email (can be null)
+   * @param mechanicName Mechanic's name
+   * @param managerEmail Manager's email
+   * @param workOrderNumber Work order number
+   * @param vehicleInfo Vehicle information
+   * @param changes Description of changes made
+   */
+  async sendWorkOrderUpdated(
+    mechanicEmail: string | null,
+    mechanicName: string | null,
+    managerEmail: string,
+    workOrderNumber: string,
+    vehicleInfo: { patente: string; marca: string; modelo: string },
+    changes: string,
+  ): Promise<void> {
+    const vehicleDisplay = `${vehicleInfo.marca} ${vehicleInfo.modelo} (${vehicleInfo.patente})`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Orden de Trabajo Actualizada</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #ff9800;">🔄 Orden de Trabajo Actualizada</h1>
+            <p>La orden de trabajo <strong>${workOrderNumber}</strong> ha sido actualizada:</p>
+
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 8px 0;"><strong>Número de OT:</strong> ${workOrderNumber}</p>
+              <p style="margin: 8px 0;"><strong>Vehículo:</strong> ${vehicleDisplay}</p>
+              <p style="margin: 8px 0;"><strong>Cambios:</strong> ${changes}</p>
+            </div>
+
+            <p>
+              <a href="${this.configService.get<string>("FRONTEND_URL")}/ordenes-trabajo"
+                 style="background-color: #ff9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Ver Orden de Trabajo
+              </a>
+            </p>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">
+              Este es un mensaje automático del Sistema de Gestión de Mantenimiento - Rápido Sur
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Send to manager
+    await this.sendMail(
+      managerEmail,
+      `🔄 OT Actualizada: ${workOrderNumber}`,
+      html,
+    );
+
+    // Send to mechanic if assigned
+    if (mechanicEmail && mechanicName) {
+      await this.sendMail(
+        mechanicEmail,
+        `🔄 OT Actualizada: ${workOrderNumber}`,
+        html,
+      );
+    }
+  }
+
+  /**
+   * Send work order completion notification to manager
+   * @param managerEmail Manager's email
+   * @param mechanicName Mechanic who completed the work
+   * @param workOrderNumber Work order number
+   * @param vehicleInfo Vehicle information
+   */
+  async sendWorkOrderCompleted(
+    managerEmail: string,
+    mechanicName: string,
+    workOrderNumber: string,
+    vehicleInfo: { patente: string; marca: string; modelo: string },
+  ): Promise<void> {
+    const vehicleDisplay = `${vehicleInfo.marca} ${vehicleInfo.modelo} (${vehicleInfo.patente})`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Orden de Trabajo Finalizada</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #4caf50;">✅ Orden de Trabajo Finalizada</h1>
+            <p>La orden de trabajo <strong>${workOrderNumber}</strong> ha sido completada:</p>
+
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 8px 0;"><strong>Número de OT:</strong> ${workOrderNumber}</p>
+              <p style="margin: 8px 0;"><strong>Vehículo:</strong> ${vehicleDisplay}</p>
+              <p style="margin: 8px 0;"><strong>Completado por:</strong> ${mechanicName}</p>
+            </div>
+
+            <p>
+              <a href="${this.configService.get<string>("FRONTEND_URL")}/ordenes-trabajo"
+                 style="background-color: #4caf50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Ver Orden de Trabajo
+              </a>
+            </p>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">
+              Este es un mensaje automático del Sistema de Gestión de Mantenimiento - Rápido Sur
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await this.sendMail(
+      managerEmail,
+      `✅ OT Finalizada: ${workOrderNumber}`,
       html,
     );
   }
