@@ -8,3 +8,4 @@ export * from "./estado-orden-trabajo.enum";
 export * from "./prioridad-orden-trabajo.enum";
 export * from "./tipo-intervalo.enum";
 export * from "./tipo-alerta.enum";
+export * from "./estado-alerta.enum";
