@@ -107,7 +107,7 @@ export const api = {
     }) => apiClient.get("/vehiculos", { params }),
     getById: (id: number) => apiClient.get(`/vehiculos/${id}`),
     create: (data: any) => apiClient.post("/vehiculos", data),
-    update: (id: number, data: any) => apiClient.put(`/vehiculos/${id}`, data),
+    update: (id: number, data: any) => apiClient.patch(`/vehiculos/${id}`, data),
     delete: (id: number) => apiClient.delete(`/vehiculos/${id}`),
   },
 
@@ -137,15 +137,28 @@ export const api = {
     updateStatus: (id: number, estado: string) => apiClient.patch(`/ordenes-trabajo/${id}/estado`, { estado }),
     assignMechanic: (id: number, mecanico_id: number) =>
       apiClient.patch(`/ordenes-trabajo/${id}/asignar`, { mecanico_id }),
+    registerWork: (id: number, data: {
+      repuestos?: Array<{
+        repuesto_id: number
+        cantidad: number
+        tarea_id: number
+      }>
+      kilometraje_actual?: number
+      observaciones?: string
+    }) => apiClient.patch(`/ordenes-trabajo/${id}/registrar-trabajo`, data),
   },
 
   // Alerts
   alerts: {
     getAll: () => apiClient.get("/alertas"),
+    getOne: (id: number) => apiClient.get(`/alertas/${id}`),
     getPendientes: () => apiClient.get("/alertas/pendientes"),
     getByVehiculo: (vehiculoId: number) => apiClient.get(`/alertas/vehiculo/${vehiculoId}`),
     verificarAhora: () => apiClient.post("/alertas/verificar-ahora"),
     crearPrueba: (patente?: string) => apiClient.post("/alertas/crear-prueba", { patente }),
+    descartar: (id: number, razon: string) => apiClient.patch(`/alertas/${id}/descartar`, { razon }),
+    crearOrdenTrabajo: (id: number, data: { descripcion?: string; prioridad: string }) =>
+      apiClient.post(`/alertas/${id}/crear-orden-trabajo`, data),
   },
 
   // Reports
@@ -155,6 +168,10 @@ export const api = {
     costs: (params: { fecha_inicio: string; fecha_fin: string }) => apiClient.get("/reportes/costos", { params }),
     maintenance: (params?: { fecha_inicio?: string; fecha_fin?: string }) =>
       apiClient.get("/reportes/mantenimientos", { params }),
+    history: () => apiClient.get("/reportes/history"),
+    saveHistory: (data: { tipo: string; fecha_inicio: string; fecha_fin: string }) =>
+      apiClient.post("/reportes/history", data),
+    deleteHistory: (id: number) => apiClient.delete(`/reportes/history/${id}`),
   },
 
   // Users (Admin only)
@@ -164,7 +181,7 @@ export const api = {
     getMechanics: () => apiClient.get("/usuarios/mecanicos"),
     getById: (id: number) => apiClient.get(`/usuarios/${id}`),
     create: (data: any) => apiClient.post("/usuarios", data),
-    update: (id: number, data: any) => apiClient.put(`/usuarios/${id}`, data),
+    update: (id: number, data: any) => apiClient.patch(`/usuarios/${id}`, data),
     delete: (id: number) => apiClient.delete(`/usuarios/${id}`),
   },
 
