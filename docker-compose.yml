@@ -9,8 +9,8 @@ services:
       POSTGRES_DB: ${DB_DATABASE:-rapido_sur}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    expose:
-      - "5432"
+    ports:
+      - "5432:5432"
     networks:
       - rapido-sur-network
     deploy:
@@ -37,7 +37,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: production
+      target: ${DOCKER_TARGET:-production}
       args:
         NODE_ENV: ${NODE_ENV:-development}
     container_name: rapido-sur-backend
@@ -45,7 +45,7 @@ services:
     ports:
       - "${BACKEND_PORT:-3000}:${BACKEND_PORT:-3000}"
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: ${BACKEND_PORT:-3000}
 
       DB_HOST: postgres
@@ -61,11 +61,7 @@ services:
 
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
 
-      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_SECURE: ${MAIL_SECURE:-false}
-      MAIL_USER: ${MAIL_USER:-dev@rapidosur.cl}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-devpassword}
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_your_api_key_here}
       MAIL_FROM: ${MAIL_FROM:-noreply@rapidosur.cl}
       MAINTENANCE_MANAGER_EMAIL: ${MAINTENANCE_MANAGER_EMAIL:-manager@rapidosur.cl}
 
@@ -121,7 +117,7 @@ services:
     container_name: rapido-sur-frontend
     restart: always
     ports:
-      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+      - "3001:${FRONTEND_PORT:-3000}"
     environment:
       # Note: NEXT_PUBLIC_* vars have NO effect at runtime - they're baked in at build time
       # This is kept for documentation purposes only
