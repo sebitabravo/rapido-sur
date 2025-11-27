@@ -63,34 +63,51 @@ export class SeedingService implements OnModuleInit {
 
   private async seed() {
     try {
-      this.logger.log('👥 Creating users...');
-      const users = await this.seedUsers();
-      
-      this.logger.log('🚗 Creating vehicles...');
-      const vehicles = await this.seedVehicles();
-      
-      this.logger.log('📋 Creating preventive plans...');
-      await this.seedPreventivePlans(vehicles);
-      
-      this.logger.log('🔧 Creating parts catalog...');
-      const parts = await this.seedParts();
-      
-      this.logger.log('📝 Creating work orders...');
-      const orders = await this.seedWorkOrders(vehicles, users);
-      
-      this.logger.log('✅ Creating tasks...');
-      await this.seedTasks(orders, users, parts);
-      
-      this.logger.log('⚠️  Creating alerts...');
-      await this.seedAlerts(vehicles);
+      const stats = {
+        users: { new: 0, existing: 0 },
+        vehicles: { new: 0, existing: 0 },
+        plans: { new: 0, existing: 0 },
+        parts: { new: 0, existing: 0 },
+        orders: { new: 0, existing: 0 },
+        tasks: { new: 0, existing: 0 },
+        alerts: { new: 0, existing: 0 },
+      };
 
-      this.logger.log('✅ Comprehensive database seeding completed successfully!');
-      this.logger.warn('⚠️  IMPORTANT: Change all default passwords immediately after first login');
-      this.logger.log('📊 Seeded data summary:');
-      this.logger.log(`   👥 Users: ${users.length}`);
-      this.logger.log(`   🚗 Vehicles: ${vehicles.length}`);
-      this.logger.log(`   🔧 Parts: ${parts.length}`);
-      this.logger.log(`   📝 Work Orders: ${orders.length}`);
+      this.logger.log('👥 Seeding users...');
+      const users = await this.seedUsers(stats);
+      
+      this.logger.log('🚗 Seeding vehicles...');
+      const vehicles = await this.seedVehicles(stats);
+      
+      this.logger.log('📋 Seeding preventive plans...');
+      await this.seedPreventivePlans(vehicles, stats);
+      
+      this.logger.log('🔧 Seeding parts catalog...');
+      const parts = await this.seedParts(stats);
+      
+      this.logger.log('📝 Seeding work orders...');
+      const orders = await this.seedWorkOrders(vehicles, users, stats);
+      
+      this.logger.log('✅ Seeding tasks...');
+      await this.seedTasks(orders, users, parts, stats);
+      
+      this.logger.log('⚠️  Seeding alerts...');
+      await this.seedAlerts(vehicles, stats);
+
+      this.logger.log('');
+      this.logger.log('✅ Database seeding completed successfully!');
+      this.logger.log('📊 Seeding summary:');
+      this.logger.log(`   👥 Users: ${stats.users.new} new, ${stats.users.existing} existing`);
+      this.logger.log(`   🚗 Vehicles: ${stats.vehicles.new} new, ${stats.vehicles.existing} existing`);
+      this.logger.log(`   📋 Preventive Plans: ${stats.plans.new} new, ${stats.plans.existing} existing`);
+      this.logger.log(`   🔧 Parts: ${stats.parts.new} new, ${stats.parts.existing} existing`);
+      this.logger.log(`   📝 Work Orders: ${stats.orders.new} new, ${stats.orders.existing} existing`);
+      this.logger.log(`   ✅ Tasks: ${stats.tasks.new} new, ${stats.tasks.existing} existing`);
+      this.logger.log(`   ⚠️  Alerts: ${stats.alerts.new} new, ${stats.alerts.existing} existing`);
+      
+      if (stats.users.new > 0) {
+        this.logger.warn('⚠️  IMPORTANT: Change all default passwords immediately after first login');
+      }
     } catch (error) {
       this.logger.error('❌ Error seeding database:', error.message);
       this.logger.error(error.stack);
@@ -102,13 +119,13 @@ export class SeedingService implements OnModuleInit {
     email: string;
     password: string;
     rol: RolUsuario;
-  }): Promise<Usuario> {
+  }, stats?: any): Promise<Usuario> {
     const exists = await this.usuarioRepo.findOne({
       where: { email: data.email },
     });
 
     if (exists) {
-      this.logger.log(`⚠️  User already exists: ${data.email}, skipping...`);
+      if (stats) stats.users.existing++;
       return exists;
     }
 
@@ -122,11 +139,11 @@ export class SeedingService implements OnModuleInit {
     });
 
     await this.usuarioRepo.save(user);
-    this.logger.log(`✅ ${data.rol} user created: ${data.email}`);
+    if (stats) stats.users.new++;
     return user;
   }
 
-  private async seedUsers(): Promise<Usuario[]> {
+  private async seedUsers(stats?: any): Promise<Usuario[]> {
     const users: Usuario[] = [];
 
     // Admin
@@ -135,7 +152,7 @@ export class SeedingService implements OnModuleInit {
       email: 'admin@rapidosur.cl',
       password: 'Admin123!',
       rol: RolUsuario.Administrador,
-    }));
+    }, stats));
 
     // Maintenance Managers
     users.push(await this.createUser({
@@ -143,14 +160,14 @@ export class SeedingService implements OnModuleInit {
       email: 'carlos.rodriguez@rapidosur.cl',
       password: 'Manager123!',
       rol: RolUsuario.JefeMantenimiento,
-    }));
+    }, stats));
 
     users.push(await this.createUser({
       nombre_completo: 'María González',
       email: 'maria.gonzalez@rapidosur.cl',
       password: 'Manager123!',
       rol: RolUsuario.JefeMantenimiento,
-    }));
+    }, stats));
 
     // Mechanics
     users.push(await this.createUser({
@@ -158,33 +175,33 @@ export class SeedingService implements OnModuleInit {
       email: 'pedro.munoz@rapidosur.cl',
       password: 'Mechanic123!',
       rol: RolUsuario.Mecanico,
-    }));
+    }, stats));
 
     users.push(await this.createUser({
       nombre_completo: 'Juan Pérez',
       email: 'juan.perez@rapidosur.cl',
       password: 'Mechanic123!',
       rol: RolUsuario.Mecanico,
-    }));
+    }, stats));
 
     users.push(await this.createUser({
       nombre_completo: 'Luis Silva',
       email: 'luis.silva@rapidosur.cl',
       password: 'Mechanic123!',
       rol: RolUsuario.Mecanico,
-    }));
+    }, stats));
 
     users.push(await this.createUser({
       nombre_completo: 'Roberto Torres',
       email: 'roberto.torres@rapidosur.cl',
       password: 'Mechanic123!',
       rol: RolUsuario.Mecanico,
-    }));
+    }, stats));
 
     return users;
   }
 
-  private async seedVehicles(): Promise<Vehiculo[]> {
+  private async seedVehicles(stats?: any): Promise<Vehiculo[]> {
     const vehiclesData = [
       { patente: 'CJRT19', marca: 'Mercedes-Benz', modelo: 'Sprinter 515', anno: 2020, kilometraje: 85000 },
       { patente: 'FLXP75', marca: 'Mercedes-Benz', modelo: 'OF-1722', anno: 2019, kilometraje: 120000 },
@@ -213,8 +230,10 @@ export class SeedingService implements OnModuleInit {
           ultima_revision: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000), // Random date within last 90 days
         });
         await this.vehiculoRepo.save(vehicle);
+        if (stats) stats.vehicles.new++;
         vehicles.push(vehicle);
       } else {
+        if (stats) stats.vehicles.existing++;
         vehicles.push(exists);
       }
     }
@@ -222,14 +241,17 @@ export class SeedingService implements OnModuleInit {
     return vehicles;
   }
 
-  private async seedPreventivePlans(vehicles: Vehiculo[]): Promise<void> {
+  private async seedPreventivePlans(vehicles: Vehiculo[], stats?: any): Promise<void> {
     for (const vehicle of vehicles) {
       // Skip if plan already exists
       const existingPlan = await this.planRepo.findOne({
         where: { vehiculo: { id: vehicle.id } },
       });
 
-      if (existingPlan) continue;
+      if (existingPlan) {
+        if (stats) stats.plans.existing++;
+        continue;
+      }
 
       // Alternate between KM and Time intervals
       const useKm = vehicles.indexOf(vehicle) % 2 === 0;
@@ -246,10 +268,11 @@ export class SeedingService implements OnModuleInit {
       });
 
       await this.planRepo.save(plan);
+      if (stats) stats.plans.new++;
     }
   }
 
-  private async seedParts(): Promise<Repuesto[]> {
+  private async seedParts(stats?: any): Promise<Repuesto[]> {
     const partsData = [
       { codigo: 'ACE-15W40', nombre: 'Aceite Motor 15W40', precio_unitario: 25000, cantidad_stock: 50 },
       { codigo: 'FILT-ACE-001', nombre: 'Filtro Aceite', precio_unitario: 8500, cantidad_stock: 40 },
@@ -278,8 +301,10 @@ export class SeedingService implements OnModuleInit {
       if (!exists) {
         const part = this.repuestoRepo.create(data);
         await this.repuestoRepo.save(part);
+        if (stats) stats.parts.new++;
         parts.push(part);
       } else {
+        if (stats) stats.parts.existing++;
         parts.push(exists);
       }
     }
@@ -287,7 +312,7 @@ export class SeedingService implements OnModuleInit {
     return parts;
   }
 
-  private async seedWorkOrders(vehicles: Vehiculo[], users: Usuario[]): Promise<OrdenTrabajo[]> {
+  private async seedWorkOrders(vehicles: Vehiculo[], users: Usuario[], stats?: any): Promise<OrdenTrabajo[]> {
     const mechanics = users.filter(u => u.rol === RolUsuario.Mecanico);
     const orders: OrdenTrabajo[] = [];
 
@@ -297,82 +322,136 @@ export class SeedingService implements OnModuleInit {
       const mechanic = mechanics[i % mechanics.length];
 
       // Preventive order (completed)
-      const preventiveOrder = this.ordenRepo.create({
-        numero_ot: `OT-2025-${String(i * 3 + 1).padStart(5, '0')}`,
-        vehiculo: vehicle,
-        tipo: TipoOrdenTrabajo.Preventivo,
-        estado: EstadoOrdenTrabajo.Finalizada,
-        descripcion: 'Mantenimiento preventivo programado',
-        fecha_creacion: new Date(Date.now() - (60 - i * 5) * 24 * 60 * 60 * 1000),
-        fecha_cierre: new Date(Date.now() - (57 - i * 5) * 24 * 60 * 60 * 1000),
-        mecanico: mechanic,
-        costo_total: 0, // Will be calculated from tasks
+      const preventiveOtNumber = `OT-2025-${String(i * 3 + 1).padStart(5, '0')}`;
+      const existingPreventive = await this.ordenRepo.findOne({
+        where: { numero_ot: preventiveOtNumber },
       });
-      await this.ordenRepo.save(preventiveOrder);
-      orders.push(preventiveOrder);
+
+      if (!existingPreventive) {
+        const preventiveOrder = this.ordenRepo.create({
+          numero_ot: preventiveOtNumber,
+          vehiculo: vehicle,
+          tipo: TipoOrdenTrabajo.Preventivo,
+          estado: EstadoOrdenTrabajo.Finalizada,
+          descripcion: 'Mantenimiento preventivo programado',
+          fecha_creacion: new Date(Date.now() - (60 - i * 5) * 24 * 60 * 60 * 1000),
+          fecha_cierre: new Date(Date.now() - (57 - i * 5) * 24 * 60 * 60 * 1000),
+          mecanico: mechanic,
+          costo_total: 0, // Will be calculated from tasks
+        });
+        await this.ordenRepo.save(preventiveOrder);
+        if (stats) stats.orders.new++;
+        orders.push(preventiveOrder);
+      } else {
+        if (stats) stats.orders.existing++;
+        orders.push(existingPreventive);
+      }
 
       // Corrective order (completed)
       if (i < 7) {
-        const correctiveOrder = this.ordenRepo.create({
-          numero_ot: `OT-2025-${String(i * 3 + 2).padStart(5, '0')}`,
-          vehiculo: vehicle,
-          tipo: TipoOrdenTrabajo.Correctivo,
-          estado: EstadoOrdenTrabajo.Finalizada,
-          descripcion: i % 3 === 0 
-            ? 'Falla en sistema de frenos - revisión urgente'
-            : i % 3 === 1
-            ? 'Problema eléctrico - luces intermitentes'
-            : 'Fuga de líquido refrigerante',
-          fecha_creacion: new Date(Date.now() - (45 - i * 4) * 24 * 60 * 60 * 1000),
-          fecha_cierre: new Date(Date.now() - (42 - i * 4) * 24 * 60 * 60 * 1000),
-          mecanico: mechanic,
-          costo_total: 0,
+        const correctiveOtNumber = `OT-2025-${String(i * 3 + 2).padStart(5, '0')}`;
+        const existingCorrective = await this.ordenRepo.findOne({
+          where: { numero_ot: correctiveOtNumber },
         });
-        await this.ordenRepo.save(correctiveOrder);
-        orders.push(correctiveOrder);
+
+        if (!existingCorrective) {
+          const correctiveOrder = this.ordenRepo.create({
+            numero_ot: correctiveOtNumber,
+            vehiculo: vehicle,
+            tipo: TipoOrdenTrabajo.Correctivo,
+            estado: EstadoOrdenTrabajo.Finalizada,
+            descripcion: i % 3 === 0 
+              ? 'Falla en sistema de frenos - revisión urgente'
+              : i % 3 === 1
+              ? 'Problema eléctrico - luces intermitentes'
+              : 'Fuga de líquido refrigerante',
+            fecha_creacion: new Date(Date.now() - (45 - i * 4) * 24 * 60 * 60 * 1000),
+            fecha_cierre: new Date(Date.now() - (42 - i * 4) * 24 * 60 * 60 * 1000),
+            mecanico: mechanic,
+            costo_total: 0,
+          });
+          await this.ordenRepo.save(correctiveOrder);
+          if (stats) stats.orders.new++;
+          orders.push(correctiveOrder);
+        } else {
+          if (stats) stats.orders.existing++;
+          orders.push(existingCorrective);
+        }
       }
 
       // In-progress orders
       if (i < 3) {
-        const inProgressOrder = this.ordenRepo.create({
-          numero_ot: `OT-2025-${String(i * 3 + 3).padStart(5, '0')}`,
-          vehiculo: vehicle,
-          tipo: i % 2 === 0 ? TipoOrdenTrabajo.Preventivo : TipoOrdenTrabajo.Correctivo,
-          estado: EstadoOrdenTrabajo.EnProgreso,
-          descripcion: i % 2 === 0 
-            ? 'Servicio de mantenimiento 10,000 km'
-            : 'Revisión de suspensión - ruidos anormales',
-          fecha_creacion: new Date(Date.now() - (5 - i) * 24 * 60 * 60 * 1000),
-          mecanico: mechanic,
-          costo_total: 0,
+        const inProgressOtNumber = `OT-2025-${String(i * 3 + 3).padStart(5, '0')}`;
+        const existingInProgress = await this.ordenRepo.findOne({
+          where: { numero_ot: inProgressOtNumber },
         });
-        await this.ordenRepo.save(inProgressOrder);
-        orders.push(inProgressOrder);
+
+        if (!existingInProgress) {
+          const inProgressOrder = this.ordenRepo.create({
+            numero_ot: inProgressOtNumber,
+            vehiculo: vehicle,
+            tipo: i % 2 === 0 ? TipoOrdenTrabajo.Preventivo : TipoOrdenTrabajo.Correctivo,
+            estado: EstadoOrdenTrabajo.EnProgreso,
+            descripcion: i % 2 === 0 
+              ? 'Servicio de mantenimiento 10,000 km'
+              : 'Revisión de suspensión - ruidos anormales',
+            fecha_creacion: new Date(Date.now() - (5 - i) * 24 * 60 * 60 * 1000),
+            mecanico: mechanic,
+            costo_total: 0,
+          });
+          await this.ordenRepo.save(inProgressOrder);
+          if (stats) stats.orders.new++;
+          orders.push(inProgressOrder);
+        } else {
+          if (stats) stats.orders.existing++;
+          orders.push(existingInProgress);
+        }
       }
 
       // Pending orders
       if (i >= 7) {
-        const pendingOrder = this.ordenRepo.create({
-          numero_ot: `OT-2025-${String(i * 3 + 3).padStart(5, '0')}`,
-          vehiculo: vehicle,
-          tipo: TipoOrdenTrabajo.Correctivo,
-          estado: EstadoOrdenTrabajo.Pendiente,
-          descripcion: 'Revisión general solicitada por conductor',
-          fecha_creacion: new Date(Date.now() - (2 - (i - 7)) * 24 * 60 * 60 * 1000),
-          costo_total: 0,
+        const pendingOtNumber = `OT-2025-${String(i * 3 + 3).padStart(5, '0')}`;
+        const existingPending = await this.ordenRepo.findOne({
+          where: { numero_ot: pendingOtNumber },
         });
-        await this.ordenRepo.save(pendingOrder);
-        orders.push(pendingOrder);
+
+        if (!existingPending) {
+          const pendingOrder = this.ordenRepo.create({
+            numero_ot: pendingOtNumber,
+            vehiculo: vehicle,
+            tipo: TipoOrdenTrabajo.Correctivo,
+            estado: EstadoOrdenTrabajo.Pendiente,
+            descripcion: 'Revisión general solicitada por conductor',
+            fecha_creacion: new Date(Date.now() - (2 - (i - 7)) * 24 * 60 * 60 * 1000),
+            costo_total: 0,
+          });
+          await this.ordenRepo.save(pendingOrder);
+          if (stats) stats.orders.new++;
+          orders.push(pendingOrder);
+        } else {
+          if (stats) stats.orders.existing++;
+          orders.push(existingPending);
+        }
       }
     }
 
     return orders;
   }
 
-  private async seedTasks(orders: OrdenTrabajo[], users: Usuario[], parts: Repuesto[]): Promise<void> {
+  private async seedTasks(orders: OrdenTrabajo[], users: Usuario[], parts: Repuesto[], stats?: any): Promise<void> {
     const mechanics = users.filter(u => u.rol === RolUsuario.Mecanico);
 
     for (const order of orders) {
+      // Check if tasks already exist for this order
+      const existingTasks = await this.tareaRepo.count({
+        where: { orden_trabajo: { id: order.id } },
+      });
+
+      if (existingTasks > 0) {
+        if (stats) stats.tasks.existing += existingTasks;
+        continue;
+      }
+
       const mechanic = order.mecanico || mechanics[0];
       let totalCost = 0;
 
@@ -388,6 +467,8 @@ export class SeedingService implements OnModuleInit {
           horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 1.5 : 0,
         });
         await this.tareaRepo.save(oilTask);
+        if (stats) stats.tasks.new++;
+        if (stats) stats.tasks.new++;
 
         // Add parts to completed tasks
         if (order.estado === EstadoOrdenTrabajo.Finalizada) {
@@ -427,6 +508,8 @@ export class SeedingService implements OnModuleInit {
           horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 0.5 : 0,
         });
         await this.tareaRepo.save(airFilterTask);
+        if (stats) stats.tasks.new++;
+        if (stats) stats.tasks.new++;
 
         if (order.estado === EstadoOrdenTrabajo.Finalizada) {
           const filtroAire = parts.find(p => p.nombre.includes('Filtro Aire'));
@@ -452,6 +535,7 @@ export class SeedingService implements OnModuleInit {
           horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 1.0 : 0,
         });
         await this.tareaRepo.save(brakeTask);
+        if (stats) stats.tasks.new++;
 
       } else {
         // Corrective tasks
@@ -465,6 +549,7 @@ export class SeedingService implements OnModuleInit {
             horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 2.5 : 0,
           });
           await this.tareaRepo.save(brakeTask);
+        if (stats) stats.tasks.new++;
 
           if (order.estado === EstadoOrdenTrabajo.Finalizada) {
             const pastillas = parts.find(p => p.nombre.includes('Pastillas Freno Delanteras'));
@@ -489,6 +574,7 @@ export class SeedingService implements OnModuleInit {
             horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 3.0 : 0,
           });
           await this.tareaRepo.save(electricTask);
+        if (stats) stats.tasks.new++;
 
           if (order.estado === EstadoOrdenTrabajo.Finalizada) {
             const bateria = parts.find(p => p.nombre.includes('Batería'));
@@ -513,6 +599,7 @@ export class SeedingService implements OnModuleInit {
             horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 2.0 : 0,
           });
           await this.tareaRepo.save(generalTask);
+        if (stats) stats.tasks.new++;
 
           if (order.estado === EstadoOrdenTrabajo.Finalizada) {
             const refrigerante = parts.find(p => p.nombre.includes('Refrigerante'));
@@ -538,11 +625,21 @@ export class SeedingService implements OnModuleInit {
     }
   }
 
-  private async seedAlerts(vehicles: Vehiculo[]): Promise<void> {
+  private async seedAlerts(vehicles: Vehiculo[], stats?: any): Promise<void> {
     // Create some sample alerts for vehicles that need maintenance
     for (let i = 0; i < 4; i++) {
       const vehicle = vehicles[i];
       
+      // Check if alert already exists for this vehicle
+      const existingAlert = await this.alertaRepo.findOne({
+        where: { vehiculo: { id: vehicle.id } },
+      });
+
+      if (existingAlert) {
+        if (stats) stats.alerts.existing++;
+        continue;
+      }
+
       const alert = this.alertaRepo.create({
         vehiculo: vehicle,
         tipo_alerta: i % 2 === 0 ? TipoAlerta.Kilometraje : TipoAlerta.Fecha,
@@ -554,6 +651,7 @@ export class SeedingService implements OnModuleInit {
       });
 
       await this.alertaRepo.save(alert);
+      if (stats) stats.alerts.new++;
     }
   }
 }
