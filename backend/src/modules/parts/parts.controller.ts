@@ -23,6 +23,7 @@ import {
   ApiForbiddenResponse,
 } from "@nestjs/swagger";
 import { PartsService } from "./parts.service";
+import { InventoryAlertsService } from "./inventory-alerts.service";
 import { Repuesto } from "./entities/repuesto.entity";
 import { CreateRepuestoDto } from "./dto/create-repuesto.dto";
 import { UpdateRepuestoDto } from "./dto/update-repuesto.dto";
@@ -41,7 +42,10 @@ import { RolUsuario } from "../../common/enums";
 @Controller("repuestos")
 @UseGuards(JwtAuthGuard)
 export class PartsController {
-  constructor(private readonly partsService: PartsService) {}
+  constructor(
+    private readonly partsService: PartsService,
+    private readonly inventoryAlertsService: InventoryAlertsService,
+  ) {}
 
   /**
    * GET /repuestos
@@ -214,5 +218,76 @@ export class PartsController {
   async remove(@Param("id", ParseIntPipe) id: number): Promise<Repuesto> {
     // Soft delete by setting stock to 0
     return this.partsService.update(id, { cantidad_stock: 0 });
+  }
+
+  /**
+   * GET /repuestos/stock-bajo
+   * Get parts with stock below minimum level
+   */
+  @ApiOperation({
+    summary: "Listar repuestos con stock bajo",
+    description:
+      "Obtiene lista de repuestos cuyo stock actual está por debajo del stock mínimo configurado. Útil para gestión de inventario.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Lista de repuestos con stock bajo",
+    isArray: true,
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden consultar stock bajo",
+  })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Get("stock-bajo")
+  async getLowStock(): Promise<Repuesto[]> {
+    return this.partsService.findBelowMinimumStock();
+  }
+
+  /**
+   * POST /repuestos/verificar-stock-ahora
+   * Manually trigger low stock check and send alert email
+   */
+  @ApiOperation({
+    summary: "Verificar stock bajo ahora",
+    description:
+      "Ejecuta manualmente la verificación de stock bajo y envía alerta por email si hay repuestos que requieren reabastecimiento. Útil para testing o revisión inmediata.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Verificación completada",
+    schema: {
+      example: {
+        partsFound: 3,
+        alertSent: true,
+        parts: [
+          {
+            codigo: "F001",
+            nombre: "Filtro de Aceite",
+            cantidad_stock: 2,
+            stock_minimo: 10,
+          },
+        ],
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden verificar stock",
+  })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @HttpCode(HttpStatus.OK)
+  @Post("verificar-stock-ahora")
+  async checkLowStockNow(): Promise<{
+    partsFound: number;
+    alertSent: boolean;
+    parts: Array<{
+      codigo: string;
+      nombre: string;
+      cantidad_stock: number;
+      stock_minimo: number;
+    }>;
+  }> {
+    return this.inventoryAlertsService.checkNow();
   }
 }

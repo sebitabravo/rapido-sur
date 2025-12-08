@@ -184,4 +184,42 @@ export class PartsService {
       .orderBy("repuesto.cantidad_stock", "ASC")
       .getMany();
   }
+
+  /**
+   * Find parts with stock below their minimum level
+   * Returns parts where cantidad_stock <= stock_minimo
+   */
+  async findBelowMinimumStock(): Promise<Repuesto[]> {
+    return this.repuestoRepository
+      .createQueryBuilder("repuesto")
+      .where("repuesto.cantidad_stock <= repuesto.stock_minimo")
+      .andWhere("repuesto.stock_minimo > 0") // Only parts with defined minimum
+      .orderBy("repuesto.cantidad_stock", "ASC")
+      .getMany();
+  }
+
+  /**
+   * Check and alert for low stock parts
+   * Called by cron job daily
+   */
+  async checkLowStockAlerts(): Promise<{
+    lowStockParts: Repuesto[];
+    alertSent: boolean;
+  }> {
+    const lowStockParts = await this.findBelowMinimumStock();
+
+    if (lowStockParts.length === 0) {
+      this.logger.log("No parts with low stock found");
+      return { lowStockParts: [], alertSent: false };
+    }
+
+    this.logger.warn(
+      `Found ${lowStockParts.length} parts with stock below minimum`,
+    );
+
+    return {
+      lowStockParts,
+      alertSent: false, // Will be set to true by calling service after sending email
+    };
+  }
 }
