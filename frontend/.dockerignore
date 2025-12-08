@@ -1,0 +1,54 @@
+# ================================
+# .dockerignore - Frontend
+# ================================
+# Exclude files from Docker build context for faster builds
+
+# Dependencies (installed in Dockerfile)
+node_modules
+npm-debug.log
+yarn-error.log
+yarn.lock
+.pnpm-store
+# Keep package-lock.json for npm ci (faster installs)
+!package-lock.json
+
+# Build output (built in Dockerfile)
+.next
+out
+build
+dist
+
+# Environment files (passed via Docker)
+.env
+.env.local
+.env.development
+.env.production.local
+
+# Development files
+.git
+.gitignore
+README.md
+*.md
+.vscode
+.idea
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (avoid recursive issues)
+Dockerfile
+docker-compose*.yml
