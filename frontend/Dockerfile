@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm ci
+# Using npm install because workspace config prevents package-lock.json generation
+RUN npm install --production=false
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
