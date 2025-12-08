@@ -1,67 +1,64 @@
-# Multi-stage build for Next.js application
+# ===========================================
+# Multi-stage build for Next.js (OPTIMIZED)
+# For VPS with limited resources (1 vCPU, 4GB RAM)
+# ===========================================
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy package files
+# Install only production dependencies first for better caching
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-# Using npm install because workspace config prevents package-lock.json generation
-RUN npm install --production=false
+# Optimized install for CI/CD - faster and uses less memory
+RUN npm ci --prefer-offline --no-audit --no-fund --loglevel=error 2>/dev/null || \
+    npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies and source
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# CRITICAL: NEXT_PUBLIC_* variables must be set at BUILD time
-# They get embedded into the JavaScript bundle during 'npm run build'
-# Setting them at runtime has NO effect
+# Build arguments
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
-# Set environment variables for build
+# Optimizations for low-resource servers
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Limit memory to prevent OOM on small VPS
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 
-# Build the application (NEXT_PUBLIC_API_URL is now available)
+# Build with standalone output (CRITICAL for small images)
 RUN npm run build
 
-# Stage 3: Runner
+# Stage 3: Runner (MINIMAL - only what's needed to run)
 FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Port configuration via build arg (default 3000 for Dokploy compatibility)
+# Port configuration
 ARG FRONTEND_PORT=3000
 ENV PORT=${FRONTEND_PORT}
 ENV HOSTNAME="0.0.0.0"
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copy built application and dependencies
+# Copy ONLY the standalone build (much smaller than full node_modules)
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
-
-# Switch to non-root user
 USER nextjs
 
-# Expose port (uses ARG value)
 EXPOSE ${FRONTEND_PORT}
 
-# Start the application using next start
-CMD ["npm", "start"]
+# Use node directly instead of npm (faster startup)
+CMD ["node", "server.js"]
