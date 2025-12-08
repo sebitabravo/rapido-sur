@@ -260,22 +260,19 @@ export class ReportsService {
     switch (tipo) {
       case "indisponibilidad":
         data = await this.getReporteIndisponibilidad(filters);
-        return this.convertToCSV(data, [
-          "patente",
-          "marca",
-          "modelo",
-          "total_ordenes",
-          "dias_inactividad",
-          "promedio_dias",
-        ]);
+        return this.convertToCSV(
+          data,
+          ["patente", "marca", "modelo", "total_ordenes", "dias_inactividad", "promedio_dias"],
+          ["Patente", "Marca", "Modelo", "Total Órdenes", "Días Inactividad", "Promedio Días"]
+        );
 
       case "costos":
         const reporteCostos = await this.getReporteCostos(filters);
-        return this.convertToCSV(reporteCostos.costos_por_vehiculo, [
-          "patente",
-          "total_ordenes",
-          "costo_total",
-        ]);
+        return this.convertToCSV(
+          reporteCostos.costos_por_vehiculo,
+          ["patente", "total_ordenes", "costo_total"],
+          ["Patente", "Total Órdenes", "Costo Total"]
+        );
 
       default:
         throw new BadRequestException("Tipo de reporte no válido");
@@ -285,12 +282,23 @@ export class ReportsService {
   /**
    * HELPER: Convert to CSV
    */
-  private convertToCSV(data: any[], headers: string[]): string {
-    const headerRow = headers.join(",");
+  private convertToCSV(data: any[], headers: string[], displayHeaders?: string[]): string {
+    // Add UTF-8 BOM for Excel compatibility with special characters (tildes, ñ, etc.)
+    const BOM = '\uFEFF';
+    const headerRow = (displayHeaders || headers).join(",");
     const rows = data.map((item) =>
-      headers.map((header) => item[header] || "").join(","),
+      headers.map((header) => {
+        const value = item[header];
+        // Escape values that contain commas, quotes, or newlines
+        if (value === null || value === undefined) return "";
+        const stringValue = String(value);
+        if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      }).join(","),
     );
-    return [headerRow, ...rows].join("\n");
+    return BOM + [headerRow, ...rows].join("\n");
   }
 
   async saveHistory(tipo: string, fechaInicio: string, fechaFin: string, usuario?: string) {

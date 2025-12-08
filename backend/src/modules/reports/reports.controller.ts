@@ -121,7 +121,7 @@ export class ReportsController {
     @Res() res: Response,
   ): Promise<void> {
     const csv = await this.reportsService.exportToCSV(tipo, filters);
-    res.header("Content-Type", "text/csv");
+    res.header("Content-Type", "text/csv; charset=utf-8");
     res.header(
       "Content-Disposition",
       `attachment; filename=reporte-${tipo}-${Date.now()}.csv`,
