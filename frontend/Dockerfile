@@ -39,11 +39,13 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME="0.0.0.0"
-# PORT is set via docker-compose environment, default 3001
-ENV PORT=${PORT:-3001}
+ENV PORT=3001
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -56,7 +58,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-# Expose default port (can be overridden)
+# Expose port
 EXPOSE 3001
 
 # Use node directly instead of npm (faster startup)
