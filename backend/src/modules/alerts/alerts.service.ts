@@ -8,6 +8,7 @@ import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
 import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
 import { Usuario } from "../users/entities/usuario.entity";
 import { MailService } from "../mail/mail.service";
+import { EventsGateway } from "../websockets/events.gateway";
 import { EstadoVehiculo, TipoAlerta, TipoIntervalo, EstadoAlerta, TipoOrdenTrabajo, EstadoOrdenTrabajo, PrioridadOrdenTrabajo } from "../../common/enums";
 
 /**
@@ -28,6 +29,7 @@ export class AlertsService {
     @InjectRepository(OrdenTrabajo)
     private readonly otRepo: Repository<OrdenTrabajo>,
     private readonly mailService: MailService,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   /**
@@ -149,7 +151,25 @@ export class AlertsService {
         email_enviado: false,
       });
 
-      return this.alertaRepo.save(alerta);
+      const savedAlerta = await this.alertaRepo.save(alerta);
+
+      // Emit WebSocket event for new alert
+      try {
+        this.eventsGateway.emitAlertCreated({
+          id: savedAlerta.id,
+          tipo: savedAlerta.tipo_alerta,
+          mensaje: savedAlerta.mensaje,
+          vehiculo: {
+            patente: vehiculo.patente,
+            marca: vehiculo.marca,
+            modelo: vehiculo.modelo,
+          },
+        });
+      } catch (error) {
+        this.logger.error("Failed to emit WebSocket event for alert:", error);
+      }
+
+      return savedAlerta;
     }
 
     return null;
