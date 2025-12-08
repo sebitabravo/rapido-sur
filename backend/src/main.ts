@@ -110,8 +110,21 @@ async function bootstrap() {
   );
 
   // Enable CORS for frontend communication
+  // Supports multiple origins via CORS_ORIGINS env variable (comma-separated)
+  // Falls back to FRONTEND_URL for single origin or localhost for development
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
+    : [process.env.FRONTEND_URL || "http://localhost:3000"];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin) return callback(null, true);
+      if (corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
 
