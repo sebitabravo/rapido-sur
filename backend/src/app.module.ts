@@ -17,6 +17,7 @@ import { PartsModule } from "./modules/parts/parts.module";
 import { PartDetailsModule } from "./modules/part-details/part-details.module";
 import { AlertsModule } from "./modules/alerts/alerts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { WebsocketsModule } from "./modules/websockets/websockets.module";
 import { SeedingService } from "./database/seeding.service";
 import { Usuario } from "./modules/users/entities/usuario.entity";
 import { Vehiculo } from "./modules/vehicles/entities/vehiculo.entity";
@@ -95,6 +96,7 @@ import { Alerta } from "./modules/alerts/entities/alerta.entity";
     PartDetailsModule,
     AlertsModule,
     ReportsModule,
+    WebsocketsModule,
     // Import entities for seeding service
     TypeOrmModule.forFeature([
       Usuario,

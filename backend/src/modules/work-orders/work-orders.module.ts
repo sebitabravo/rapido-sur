@@ -10,6 +10,7 @@ import { Tarea } from "../tasks/entities/tarea.entity";
 import { WorkOrdersService } from "./work-orders.service";
 import { WorkOrdersController } from "./work-orders.controller";
 import { MailModule } from "../mail/mail.module";
+import { WebsocketsModule } from "../websockets/websockets.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { MailModule } from "../mail/mail.module";
       Tarea,
     ]),
     MailModule,
+    WebsocketsModule,
   ],
   controllers: [WorkOrdersController],
   providers: [WorkOrdersService],

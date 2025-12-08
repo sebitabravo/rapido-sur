@@ -7,11 +7,13 @@ import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
 import { AlertsService } from "./alerts.service";
 import { AlertsController } from "./alerts.controller";
 import { MailModule } from "../mail/mail.module";
+import { WebsocketsModule } from "../websockets/websockets.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Alerta, PlanPreventivo, Vehiculo, OrdenTrabajo]),
     MailModule,
+    WebsocketsModule,
   ],
   controllers: [AlertsController],
   providers: [AlertsService],
