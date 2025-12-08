@@ -9,8 +9,8 @@ services:
       POSTGRES_DB: ${DB_DATABASE:-rapido_sur}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Port NOT exposed to prevent external attacks
+    # Only accessible from internal docker network
     networks:
       - rapido-sur-network
     deploy:

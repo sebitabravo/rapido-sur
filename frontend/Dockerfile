@@ -41,11 +41,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Port configuration
-ARG FRONTEND_PORT=3000
-ENV PORT=${FRONTEND_PORT}
 ENV HOSTNAME="0.0.0.0"
+# PORT is set via docker-compose environment, default 3001
+ENV PORT=${PORT:-3001}
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -58,7 +56,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE ${FRONTEND_PORT}
+# Expose default port (can be overridden)
+EXPOSE 3001
 
 # Use node directly instead of npm (faster startup)
 CMD ["node", "server.js"]
