@@ -35,6 +35,7 @@ import {
   TipoIntervalo,
 } from "../../common/enums";
 import { MailService } from "../mail/mail.service";
+import { EventsGateway } from "../websockets/events.gateway";
 
 /**
  * Service for managing work orders
@@ -61,6 +62,7 @@ export class WorkOrdersService {
     private readonly tareaRepo: Repository<Tarea>,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   /**
@@ -125,6 +127,28 @@ export class WorkOrdersService {
     } catch (error) {
       this.logger.error(`Failed to send email notification for work order ${savedOrden.numero_ot}:`, error);
       // Don't throw error - work order was created successfully
+    }
+
+    // Emit WebSocket event for real-time notification
+    try {
+      this.eventsGateway.emitWorkOrderCreated({
+        id: savedOrden.id,
+        numero_ot: savedOrden.numero_ot,
+        tipo: savedOrden.tipo,
+        vehiculo: {
+          patente: vehiculo.patente,
+          marca: vehiculo.marca,
+          modelo: vehiculo.modelo,
+        },
+        ...(mecanico && {
+          mecanico: {
+            id: mecanico.id,
+            nombre_completo: mecanico.nombre_completo,
+          },
+        }),
+      });
+    } catch (error) {
+      this.logger.error(`Failed to emit WebSocket event for work order ${savedOrden.numero_ot}:`, error);
     }
 
     return savedOrden;
@@ -470,7 +494,7 @@ export class WorkOrdersService {
     // 2. OR they have tasks assigned to them in that work order
     if (user.rol === RolUsuario.Mecanico) {
       qb.andWhere(
-        "(ot.mecanico_id = :currentMecanicoId OR EXISTS (SELECT 1 FROM tarea WHERE tarea.orden_trabajo_id = ot.id AND tarea.mecanico_id = :currentMecanicoId))",
+        "(ot.mecanico_id = :currentMecanicoId OR EXISTS (SELECT 1 FROM tareas WHERE tareas.orden_trabajo_id = ot.id AND tareas.mecanico_id = :currentMecanicoId))",
         { currentMecanicoId: user.id }
       );
     }
@@ -685,8 +709,11 @@ export class WorkOrdersService {
   ): Promise<OrdenTrabajo> {
     const orden = await this.findOne(id);
 
+    // IMPORTANT: Store previous state BEFORE modifying for WebSocket event
+    const estadoAnterior = orden.estado;
+
     this.logger.log(
-      `Updating work order ${id} status from ${orden.estado} to ${nuevoEstado}`,
+      `Updating work order ${id} status from ${estadoAnterior} to ${nuevoEstado}`,
     );
 
     // Update estado
@@ -695,7 +722,7 @@ export class WorkOrdersService {
     // If finalizing, auto-complete all pending tasks
     if (nuevoEstado === EstadoOrdenTrabajo.Finalizada) {
       this.logger.log(`Auto-completing pending tasks for work order ${id}`);
-      
+
       await this.tareaRepo
         .createQueryBuilder()
         .update(Tarea)
@@ -706,6 +733,36 @@ export class WorkOrdersService {
     }
 
     await this.otRepo.save(orden);
+
+    // Emit WebSocket event for status change
+    try {
+      const ordenCompleta = await this.findOne(id);
+      this.eventsGateway.emitWorkOrderStatusChanged({
+        id: ordenCompleta.id,
+        numero_ot: ordenCompleta.numero_ot,
+        nuevo_estado: nuevoEstado,
+        estado_anterior: estadoAnterior,
+        vehiculo: { patente: ordenCompleta.vehiculo.patente },
+        ...(ordenCompleta.mecanico && {
+          mecanico: { id: ordenCompleta.mecanico.id },
+        }),
+      });
+
+      // If completed, emit completion event
+      if (nuevoEstado === EstadoOrdenTrabajo.Finalizada && ordenCompleta.mecanico) {
+        this.eventsGateway.emitWorkOrderCompleted({
+          id: ordenCompleta.id,
+          numero_ot: ordenCompleta.numero_ot,
+          vehiculo: { patente: ordenCompleta.vehiculo.patente },
+          mecanico: {
+            id: ordenCompleta.mecanico.id,
+            nombre_completo: ordenCompleta.mecanico.nombre_completo,
+          },
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Failed to emit WebSocket event for status change:`, error);
+    }
 
     // Return updated order with relations
     return this.findOne(id);
