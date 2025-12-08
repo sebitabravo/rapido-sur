@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // CRITICAL: Standalone output reduces image size from ~500MB to ~50MB
+  // Required for optimized Docker deployments on small VPS
+  output: 'standalone',
+  
   poweredByHeader: false,
   compress: true,
 
