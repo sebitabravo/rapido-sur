@@ -181,6 +181,8 @@ export const api = {
     getById: (id: number) => apiClient.get(`/usuarios/${id}`),
     create: (data: any) => apiClient.post("/usuarios", data),
     update: (id: number, data: any) => apiClient.patch(`/usuarios/${id}`, data),
+    changePassword: (id: number, nueva_password: string) =>
+      apiClient.patch(`/usuarios/${id}/cambiar-password`, { nueva_password }),
     delete: (id: number) => apiClient.delete(`/usuarios/${id}`),
   },
 
