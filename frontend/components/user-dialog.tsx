@@ -102,27 +102,32 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
     try {
       setLoading(true)
 
-      // Remove password if empty on edit
-      const submitData = { ...data }
-      if (isEdit && !submitData.password) {
-        delete submitData.password
-      }
-
       if (isEdit) {
-        await api.users.update(user.id, submitData)
+        // When editing, separate password from other data
+        const { password, ...userData } = data
+
+        // Update user data (without password)
+        await api.users.update(user.id, userData)
+
+        // If password was provided, change it using the dedicated endpoint
+        if (password && password.trim() !== "") {
+          await api.users.changePassword(user.id, password)
+        }
+
         toast.success("Usuario actualizado correctamente")
       } else {
-        await api.users.create(submitData)
+        // When creating, include password in the creation request
+        await api.users.create(data)
         toast.success("Usuario creado correctamente")
       }
       onSave()
     } catch (error: any) {
       console.error("Error saving user:", error)
-      
+
       // Handle validation errors from backend
       if (error.response?.data) {
         const errorData = error.response.data
-        
+
         // If it's an array of validation errors (from class-validator)
         if (Array.isArray(errorData)) {
           const messages = errorData
@@ -133,20 +138,20 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
               return null
             })
             .filter(Boolean)
-          
+
           if (messages.length > 0) {
             toast.error(messages.join(". "))
           } else {
             toast.error("Error de validación en los datos")
           }
-        } 
+        }
         // If it has a message property
         else if (errorData.message) {
-          const message = Array.isArray(errorData.message) 
+          const message = Array.isArray(errorData.message)
             ? errorData.message.join(". ")
             : errorData.message
           toast.error(message)
-        } 
+        }
         // Generic error
         else {
           toast.error("Error al guardar el usuario")
