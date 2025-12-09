@@ -43,6 +43,10 @@ export default function PartsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedPart, setSelectedPart] = useState<Part | null>(null)
 
+  // Check if user is a mechanic (read-only access to parts)
+  const user = authService.getUser()
+  const isMechanic = user?.rol === "Mecanico"
+
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
 
   useEffect(() => {
@@ -149,13 +153,17 @@ export default function PartsPage() {
             <Package className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-xl font-bold">Catálogo de Repuestos</h1>
-              <p className="text-sm text-muted-foreground">Gestione el inventario de repuestos</p>
+              <p className="text-sm text-muted-foreground">
+                {isMechanic ? "Consulta de repuestos disponibles" : "Gestione el inventario de repuestos"}
+              </p>
             </div>
           </div>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Repuesto
-          </Button>
+          {!isMechanic && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Repuesto
+            </Button>
+          )}
         </div>
       </header>
 
@@ -218,7 +226,7 @@ export default function PartsPage() {
                 <p className="text-sm text-muted-foreground">
                   {searchTerm ? "No se encontraron repuestos con los filtros aplicados" : "No hay repuestos registrados"}
                 </p>
-                {!searchTerm && (
+                {!searchTerm && !isMechanic && (
                   <Button onClick={handleAdd} className="mt-4">
                     <Plus className="h-4 w-4 mr-2" />
                     Crear Primer Repuesto
@@ -236,7 +244,7 @@ export default function PartsPage() {
                       <TableHead className="text-right">Precio</TableHead>
                       <TableHead className="text-right">Stock</TableHead>
                       <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      {!isMechanic && <TableHead className="text-right">Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -259,16 +267,18 @@ export default function PartsPage() {
                           {part.cantidad_stock} / {part.stock_minimo}
                         </TableCell>
                         <TableCell>{getStockBadge(part.cantidad_stock, part.stock_minimo)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(part)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(part)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {!isMechanic && (
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(part)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(part)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

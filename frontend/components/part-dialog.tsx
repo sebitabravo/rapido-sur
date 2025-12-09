@@ -183,6 +183,7 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                   value={formData.codigo}
                   onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                   placeholder="Ej: FLT-001"
+                  maxLength={20}
                   className={errors.codigo ? "border-destructive" : ""}
                 />
                 {errors.codigo && <p className="text-xs text-destructive">{errors.codigo}</p>}
@@ -217,6 +218,7 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 placeholder="Ej: Filtro de aceite motor diesel"
+                maxLength={100}
                 className={errors.nombre ? "border-destructive" : ""}
               />
               {errors.nombre && <p className="text-xs text-destructive">{errors.nombre}</p>}
@@ -229,6 +231,7 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Descripción detallada del repuesto"
+                maxLength={500}
                 rows={3}
               />
             </div>
@@ -240,12 +243,15 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                 </Label>
                 <Input
                   id="precio_unitario"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.precio_unitario}
-                  onChange={(e) => setFormData({ ...formData, precio_unitario: e.target.value })}
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
+                  maxLength={11}
+                  value={formData.precio_unitario}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.]/g, "").slice(0, 11)
+                    setFormData({ ...formData, precio_unitario: value })
+                  }}
                   className={errors.precio_unitario ? "border-destructive" : ""}
                 />
                 {errors.precio_unitario && <p className="text-xs text-destructive">{errors.precio_unitario}</p>}
@@ -257,10 +263,14 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                 </Label>
                 <Input
                   id="cantidad_stock"
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
                   value={formData.cantidad_stock}
-                  onChange={(e) => setFormData({ ...formData, cantidad_stock: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6)
+                    setFormData({ ...formData, cantidad_stock: value })
+                  }}
                   className={errors.cantidad_stock ? "border-destructive" : ""}
                 />
                 {errors.cantidad_stock && <p className="text-xs text-destructive">{errors.cantidad_stock}</p>}
@@ -272,10 +282,14 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                 </Label>
                 <Input
                   id="stock_minimo"
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
                   value={formData.stock_minimo}
-                  onChange={(e) => setFormData({ ...formData, stock_minimo: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6)
+                    setFormData({ ...formData, stock_minimo: value })
+                  }}
                   className={errors.stock_minimo ? "border-destructive" : ""}
                 />
                 {errors.stock_minimo && <p className="text-xs text-destructive">{errors.stock_minimo}</p>}
@@ -290,6 +304,7 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                   value={formData.proveedor}
                   onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
                   placeholder="Nombre del proveedor"
+                  maxLength={100}
                 />
               </div>
 
@@ -300,6 +315,7 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
                   value={formData.ubicacion_almacen}
                   onChange={(e) => setFormData({ ...formData, ubicacion_almacen: e.target.value })}
                   placeholder="Ej: Estantería A - Nivel 3"
+                  maxLength={100}
                 />
               </div>
             </div>

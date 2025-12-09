@@ -62,10 +62,10 @@ export class PartsController {
     isArray: true,
   })
   @ApiForbiddenResponse({
-    description: "Solo Admin y Jefe pueden ver catálogo completo",
+    description: "Solo usuarios autenticados pueden ver el catálogo",
   })
   @UseGuards(RolesGuard)
-  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento, RolUsuario.Mecanico)
   @Get()
   async findAll(): Promise<Repuesto[]> {
     return this.partsService.findAll();
