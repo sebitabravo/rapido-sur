@@ -76,11 +76,11 @@ export class AlertsController {
 
   /**
    * GET /alertas/vehiculo/:vehiculoId
-   * Get alerts by vehicle
+   * Get alerts by vehicle (Admin and Jefe only)
    */
   @ApiOperation({
     summary: "Obtener alertas de un vehículo específico",
-    description: "Obtiene historial de alertas preventivas de un vehículo.",
+    description: "Obtiene historial de alertas preventivas de un vehículo. Solo Admin y Jefe de Mantenimiento.",
   })
   @ApiParam({ name: "vehiculoId", type: Number, description: "ID del vehículo" })
   @ApiResponse({
@@ -88,6 +88,9 @@ export class AlertsController {
     description: "Alertas del vehículo",
     isArray: true,
   })
+  @ApiForbiddenResponse({ description: "Solo Admin y Jefe pueden ver alertas por vehículo" })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
   @Get("vehiculo/:vehiculoId")
   async getByVehiculo(
     @Param("vehiculoId", ParseIntPipe) vehiculoId: number,

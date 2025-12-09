@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
-import { AlertTriangle, ArrowLeft, X, CheckCircle, Bell, PlayCircle, Sparkles, Eye } from "lucide-react"
+import { AlertTriangle, ArrowLeft, X, CheckCircle, Bell, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
 import { AlertDetailDialog } from "@/components/alert-detail-dialog"
@@ -34,14 +34,18 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "active" | "dismissed">("all")
-  const [verificando, setVerificando] = useState(false)
-  const [creandoPrueba, setCreandoPrueba] = useState(false)
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
       router.push("/login")
+      return
+    }
+    // Solo Admin y JefeMantenimiento pueden ver alertas
+    if (!authService.hasAnyRole(["Administrador", "JefeMantenimiento"])) {
+      toast.error("No tienes permiso para acceder a esta sección")
+      router.push("/dashboard")
       return
     }
     loadAlerts()
@@ -76,40 +80,6 @@ export default function AlertsPage() {
 
   const handleDialogSuccess = () => {
     loadAlerts()
-  }
-
-  const handleVerificarAhora = async () => {
-    try {
-      setVerificando(true)
-      const response = await api.alerts.verificarAhora()
-      const data = response.data
-      toast.success(
-        `✓ Verificación completada. ${data.alertasGeneradas} alerta${data.alertasGeneradas !== 1 ? "s" : ""} generada${data.alertasGeneradas !== 1 ? "s" : ""}`
-      )
-      await loadAlerts()
-    } catch (error) {
-      console.error("Error verificando alertas:", error)
-      toast.error("Error al verificar alertas")
-    } finally {
-      setVerificando(false)
-    }
-  }
-
-  const handleCrearPrueba = async () => {
-    try {
-      setCreandoPrueba(true)
-      const response = await api.alerts.crearPrueba()
-      const data = response.data
-      toast.success(
-        `✓ ${data.alertas.length} alerta${data.alertas.length !== 1 ? "s" : ""} de prueba creada${data.alertas.length !== 1 ? "s" : ""}`
-      )
-      await loadAlerts()
-    } catch (error) {
-      console.error("Error creando alertas de prueba:", error)
-      toast.error("Error al crear alertas de prueba")
-    } finally {
-      setCreandoPrueba(false)
-    }
   }
 
   const getAlertColor = (tipoAlerta: string) => {
@@ -151,26 +121,8 @@ export default function AlertsPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        {/* Action Buttons for MVP Testing */}
-        <div className="mb-6 flex flex-wrap gap-3">
-          <Button 
-            onClick={handleVerificarAhora} 
-            disabled={verificando}
-            className="gap-2"
-          >
-            <PlayCircle className="h-4 w-4" />
-            {verificando ? "Verificando..." : "Verificar Alertas Ahora"}
-          </Button>
-          <Button 
-            onClick={handleCrearPrueba} 
-            disabled={creandoPrueba}
-            variant="secondary"
-            className="gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            {creandoPrueba ? "Creando..." : "Crear Alertas de Prueba"}
-          </Button>
-          <div className="flex-1" />
+        {/* Action Buttons */}
+        <div className="mb-6 flex justify-end">
           <Button variant="outline" onClick={loadAlerts} className="gap-2">
             <Bell className="h-4 w-4" />
             Actualizar
