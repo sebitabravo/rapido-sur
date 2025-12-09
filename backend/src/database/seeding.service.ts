@@ -274,21 +274,21 @@ export class SeedingService implements OnModuleInit {
 
   private async seedParts(stats?: any): Promise<Repuesto[]> {
     const partsData = [
-      { codigo: 'ACE-15W40', nombre: 'Aceite Motor 15W40', precio_unitario: 25000, cantidad_stock: 50 },
-      { codigo: 'FILT-ACE-001', nombre: 'Filtro Aceite', precio_unitario: 8500, cantidad_stock: 40 },
-      { codigo: 'FILT-AIRE-001', nombre: 'Filtro Aire', precio_unitario: 12000, cantidad_stock: 35 },
-      { codigo: 'FILT-COMB-001', nombre: 'Filtro Combustible', precio_unitario: 15000, cantidad_stock: 30 },
-      { codigo: 'PAST-DEL-001', nombre: 'Pastillas Freno Delanteras', precio_unitario: 45000, cantidad_stock: 25 },
-      { codigo: 'PAST-TRA-001', nombre: 'Pastillas Freno Traseras', precio_unitario: 38000, cantidad_stock: 20 },
-      { codigo: 'DISC-FRE-001', nombre: 'Discos Freno', precio_unitario: 85000, cantidad_stock: 15 },
-      { codigo: 'BAT-12V-100AH', nombre: 'Batería 12V 100Ah', precio_unitario: 95000, cantidad_stock: 10 },
-      { codigo: 'NEU-215-75-R17', nombre: 'Neumático 215/75 R17.5', precio_unitario: 120000, cantidad_stock: 20 },
-      { codigo: 'LIQ-REF-001', nombre: 'Líquido Refrigerante', precio_unitario: 18000, cantidad_stock: 45 },
-      { codigo: 'LIQ-FRE-DOT4', nombre: 'Líquido Frenos DOT4', precio_unitario: 12000, cantidad_stock: 30 },
-      { codigo: 'COR-DIST-001', nombre: 'Correa Distribución', precio_unitario: 55000, cantidad_stock: 12 },
-      { codigo: 'BUJ-4UN-001', nombre: 'Bujías (juego 4)', precio_unitario: 28000, cantidad_stock: 18 },
-      { codigo: 'ALT-001', nombre: 'Alternador', precio_unitario: 180000, cantidad_stock: 5 },
-      { codigo: 'MOT-ARR-001', nombre: 'Motor Arranque', precio_unitario: 150000, cantidad_stock: 4 },
+      { codigo: 'ACE-15W40', nombre: 'Aceite Motor 15W40', categoria: 'Lubricantes', precio_unitario: 25000, cantidad_stock: 50, stock_minimo: 10 },
+      { codigo: 'FILT-ACE-001', nombre: 'Filtro Aceite', categoria: 'Filtros', precio_unitario: 8500, cantidad_stock: 40, stock_minimo: 8 },
+      { codigo: 'FILT-AIRE-001', nombre: 'Filtro Aire', categoria: 'Filtros', precio_unitario: 12000, cantidad_stock: 35, stock_minimo: 7 },
+      { codigo: 'FILT-COMB-001', nombre: 'Filtro Combustible', categoria: 'Filtros', precio_unitario: 15000, cantidad_stock: 30, stock_minimo: 6 },
+      { codigo: 'PAST-DEL-001', nombre: 'Pastillas Freno Delanteras', categoria: 'Frenos', precio_unitario: 45000, cantidad_stock: 25, stock_minimo: 5 },
+      { codigo: 'PAST-TRA-001', nombre: 'Pastillas Freno Traseras', categoria: 'Frenos', precio_unitario: 38000, cantidad_stock: 20, stock_minimo: 4 },
+      { codigo: 'DISC-FRE-001', nombre: 'Discos Freno', categoria: 'Frenos', precio_unitario: 85000, cantidad_stock: 15, stock_minimo: 3 },
+      { codigo: 'BAT-12V-100AH', nombre: 'Batería 12V 100Ah', categoria: 'Eléctrico', precio_unitario: 95000, cantidad_stock: 10, stock_minimo: 2 },
+      { codigo: 'NEU-215-75-R17', nombre: 'Neumático 215/75 R17.5', categoria: 'Neumáticos', precio_unitario: 120000, cantidad_stock: 20, stock_minimo: 4 },
+      { codigo: 'LIQ-REF-001', nombre: 'Líquido Refrigerante', categoria: 'Lubricantes', precio_unitario: 18000, cantidad_stock: 45, stock_minimo: 9 },
+      { codigo: 'LIQ-FRE-DOT4', nombre: 'Líquido Frenos DOT4', categoria: 'Frenos', precio_unitario: 12000, cantidad_stock: 30, stock_minimo: 6 },
+      { codigo: 'COR-DIST-001', nombre: 'Correa Distribución', categoria: 'Motor', precio_unitario: 55000, cantidad_stock: 12, stock_minimo: 2 },
+      { codigo: 'BUJ-4UN-001', nombre: 'Bujías (juego 4)', categoria: 'Motor', precio_unitario: 28000, cantidad_stock: 18, stock_minimo: 4 },
+      { codigo: 'ALT-001', nombre: 'Alternador', categoria: 'Eléctrico', precio_unitario: 180000, cantidad_stock: 5, stock_minimo: 1 },
+      { codigo: 'MOT-ARR-001', nombre: 'Motor Arranque', categoria: 'Eléctrico', precio_unitario: 150000, cantidad_stock: 4, stock_minimo: 1 },
     ];
 
     const parts: Repuesto[] = [];
