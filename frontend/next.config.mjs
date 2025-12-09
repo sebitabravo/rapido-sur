@@ -35,6 +35,22 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Evitar caché en Server Actions para prevenir errores de deployment mismatch
+        source: "/:path*",
+        has: [
+          {
+            type: "header",
+            key: "next-action",
+          },
+        ],
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, must-revalidate",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           {
