@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { User, Lock, Bell, ArrowLeft, Camera, Check } from "lucide-react"
+import { User, Lock, Bell, ArrowLeft, Check } from "lucide-react"
 import { toast } from "sonner"
+import { AvatarSelector, AvatarDisplay } from "@/components/avatar-selector"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -50,11 +50,12 @@ export default function ProfilePage() {
         nombre_completo: user.nombre_completo || "",
         email: user.email || ""
       })
-    }
-
-    const saved = localStorage.getItem("userPreferences")
-    if (saved) {
-      setPreferences(JSON.parse(saved))
+      // Cargar preferencias del usuario desde el backend
+      setPreferences({
+        emailNotifications: user.notif_email ?? true,
+        maintenanceAlerts: user.notif_mantenimiento ?? true,
+        weeklyReports: user.notif_reportes_semanales ?? false
+      })
     }
   }, [router, user])
 
@@ -137,9 +138,32 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSavePreferences = () => {
-    localStorage.setItem("userPreferences", JSON.stringify(preferences))
-    toast.success("Preferencias guardadas exitosamente")
+  const handleSavePreferences = async () => {
+    setLoading(true)
+    try {
+      await api.users.update(user?.id || 0, {
+        notif_email: preferences.emailNotifications,
+        notif_mantenimiento: preferences.maintenanceAlerts,
+        notif_reportes_semanales: preferences.weeklyReports
+      })
+      
+      // Actualizar usuario en localStorage
+      const updatedUser = {
+        ...user,
+        notif_email: preferences.emailNotifications,
+        notif_mantenimiento: preferences.maintenanceAlerts,
+        notif_reportes_semanales: preferences.weeklyReports
+      }
+      authService.saveAuth(authService.getToken() || "", updatedUser)
+      setUser(updatedUser)
+      
+      toast.success("Preferencias guardadas exitosamente")
+    } catch (error: any) {
+      console.error("Error saving preferences:", error)
+      toast.error("Error al guardar las preferencias")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getInitials = (name: string) => {
@@ -149,6 +173,22 @@ export default function ProfilePage() {
       .join("")
       .toUpperCase()
       .slice(0, 2)
+  }
+
+  const handleAvatarChange = async (avatarId: string) => {
+    setLoading(true)
+    try {
+      await api.users.update(user?.id || 0, { avatar: avatarId })
+      const updatedUser = { ...user, avatar: avatarId }
+      authService.saveAuth(authService.getToken() || "", updatedUser)
+      setUser(updatedUser)
+      toast.success("Avatar actualizado exitosamente")
+    } catch (error: any) {
+      console.error("Error updating avatar:", error)
+      toast.error("Error al actualizar el avatar")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getRoleBadgeVariant = (role: string) => {
@@ -185,21 +225,12 @@ export default function ProfilePage() {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              <div className="relative">
-                <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                  <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
-                    {getInitials(user?.nombre_completo || "U")}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
-                  onClick={() => toast.info("Cambio de avatar próximamente")}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
-              </div>
+              <AvatarSelector
+                currentAvatar={user?.avatar || "default"}
+                onSelect={handleAvatarChange}
+                disabled={loading}
+                userName={user?.nombre_completo}
+              />
 
               <div className="flex-1 text-center md:text-left">
                 <h2 className="text-2xl font-bold mb-1">{user?.nombre_completo}</h2>
@@ -351,20 +382,23 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Notificaciones</CardTitle>
-                <CardDescription>Configura tus preferencias</CardDescription>
+                <CardDescription>Configura tus preferencias de email</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 flex-1">
-                    <Label htmlFor="emailNotifications">Email</Label>
+                    <Label htmlFor="emailNotifications" className="flex items-center gap-2">
+                      Email
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Siempre activo</span>
+                    </Label>
                     <p className="text-sm text-muted-foreground">
-                      Actualizaciones importantes
+                      Notificaciones importantes (asignación de OT, cambios críticos)
                     </p>
                   </div>
                   <Switch
                     id="emailNotifications"
-                    checked={preferences.emailNotifications}
-                    onCheckedChange={(checked) => setPreferences({ ...preferences, emailNotifications: checked })}
+                    checked={true}
+                    disabled={true}
                   />
                 </div>
 
@@ -374,7 +408,7 @@ export default function ProfilePage() {
                   <div className="space-y-0.5 flex-1">
                     <Label htmlFor="maintenanceAlerts">Alertas de Mantenimiento</Label>
                     <p className="text-sm text-muted-foreground">
-                      Cuando un vehículo requiere mantenimiento
+                      Cuando un vehículo requiere mantenimiento preventivo
                     </p>
                   </div>
                   <Switch

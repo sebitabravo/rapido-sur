@@ -1,5 +1,5 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { RolUsuario } from "../../../common/enums";
 import { IsStrongPassword } from "../../../common/validators/password-strength.validator";
 
@@ -49,4 +49,14 @@ export class CreateUsuarioDto {
   })
   @IsEnum(RolUsuario, { message: "El rol no es válido" })
   rol: RolUsuario;
+
+  @ApiPropertyOptional({
+    description: "Avatar del usuario (ID predefinido o URL custom)",
+    example: "avatar-1",
+    type: String,
+    default: "default",
+  })
+  @IsOptional()
+  @IsString()
+  avatar?: string;
 }

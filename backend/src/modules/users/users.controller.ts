@@ -114,10 +114,11 @@ export class UsersController {
   /**
    * GET /usuarios/:id
    * Get single user
+   * Admin/Jefe can see any user, Mecanico can only see their own profile
    */
   @ApiOperation({
     summary: "Obtener usuario por ID",
-    description: "Obtiene información de un usuario específico (sin password_hash).",
+    description: "Obtiene información de un usuario específico (sin password_hash). Mecánicos solo pueden ver su propio perfil.",
   })
   @ApiParam({ name: "id", type: Number, description: "ID del usuario" })
   @ApiResponse({
@@ -125,8 +126,16 @@ export class UsersController {
     description: "Usuario encontrado",
   })
   @ApiNotFoundResponse({ description: "Usuario no encontrado" })
+  @ApiForbiddenResponse({ description: "No tienes permiso para ver este usuario" })
   @Get(":id")
-  async findOne(@Param("id", ParseIntPipe) id: number): Promise<Usuario> {
+  async findOne(
+    @Param("id", ParseIntPipe) id: number,
+    @CurrentUser() currentUser: Usuario,
+  ): Promise<Usuario> {
+    // Mecánicos solo pueden ver su propio perfil
+    if (currentUser.rol === RolUsuario.Mecanico && currentUser.id !== id) {
+      throw new ForbiddenException("No tienes permiso para ver este usuario");
+    }
     return this.usersService.findOne(id);
   }
 

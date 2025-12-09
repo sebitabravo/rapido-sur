@@ -37,14 +37,32 @@ const createUserSchema = z.object({
   rol: z.enum(["Administrador", "JefeMantenimiento", "Mecanico"]),
 })
 
-// Schema for editing user (password optional - empty string or valid password)
+// Schema for editing user (password optional - empty string means no change)
 const editUserSchema = z.object({
   email: z.string().email("Email inválido"),
   nombre_completo: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-  password: z.union([
-    z.string().length(0),
-    passwordValidation
-  ]).optional(),
+  password: z.string()
+    .refine(
+      (val) => val === "" || val.length >= 12,
+      "La contraseña debe tener al menos 12 caracteres"
+    )
+    .refine(
+      (val) => val === "" || /[a-z]/.test(val),
+      "Debe contener al menos una letra minúscula"
+    )
+    .refine(
+      (val) => val === "" || /[A-Z]/.test(val),
+      "Debe contener al menos una letra mayúscula"
+    )
+    .refine(
+      (val) => val === "" || /\d/.test(val),
+      "Debe contener al menos un número"
+    )
+    .refine(
+      (val) => val === "" || /[@$!%*?&#]/.test(val),
+      "Debe contener al menos un carácter especial (@$!%*?&#)"
+    )
+    .optional(),
   rol: z.enum(["Administrador", "JefeMantenimiento", "Mecanico"]),
 })
 
@@ -181,6 +199,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
               <Input
                 id="nombre_completo"
                 placeholder="Juan Pérez"
+                maxLength={100}
                 {...register("nombre_completo")}
                 aria-invalid={!!errors.nombre_completo}
                 disabled={loading}
@@ -194,6 +213,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                 id="email"
                 type="email"
                 placeholder="juan@example.com"
+                maxLength={100}
                 {...register("email")}
                 aria-invalid={!!errors.email}
                 disabled={loading}
@@ -222,6 +242,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                 id="password"
                 type="password"
                 placeholder={isEdit ? "••••••••" : "Mínimo 12 caracteres, mayúscula, minúscula, número y especial"}
+                maxLength={128}
                 {...register("password")}
                 aria-invalid={!!errors.password}
                 disabled={loading}
