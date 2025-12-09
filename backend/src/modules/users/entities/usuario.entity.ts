@@ -70,6 +70,29 @@ export class Usuario {
   activo: boolean;
 
   /**
+   * User avatar - predefined avatar ID or future custom URL
+   * Valid values: 'default', 'avatar-1' through 'avatar-12', or custom URL
+   */
+  @Column({ type: "varchar", length: 255, default: "default" })
+  @IsString()
+  avatar: string;
+
+  /**
+   * Notification preferences
+   */
+  @Column({ type: "boolean", default: true })
+  @IsBoolean()
+  notif_email: boolean;
+
+  @Column({ type: "boolean", default: true })
+  @IsBoolean()
+  notif_mantenimiento: boolean;
+
+  @Column({ type: "boolean", default: false })
+  @IsBoolean()
+  notif_reportes_semanales: boolean;
+
+  /**
    * Automatic timestamps
    */
   @CreateDateColumn({ type: "timestamp" })

@@ -1,14 +1,22 @@
-import { Controller, Post, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Usuario } from '../users/entities/usuario.entity';
 import { MailService } from './mail.service';
+import { RolUsuario } from '../../common/enums';
 
 @ApiTags('mail')
+@ApiBearerAuth('JWT-auth')
 @Controller('mail')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MailController {
   constructor(private readonly mailService: MailService) {}
 
   @Post('test')
+  @Roles(RolUsuario.Administrador)
   @ApiOperation({ summary: 'Send test email to verify Resend configuration' })
   async sendTestEmail() {
     try {

@@ -1,15 +1,88 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, In } from "typeorm";
 import { Resend } from 'resend';
 import { Alerta } from "../alerts/entities/alerta.entity";
+import { Usuario } from "../users/entities/usuario.entity";
+import { RolUsuario } from "../../common/enums";
 
 @Injectable()
 export class MailService {
   private resend: Resend;
   private readonly logger = new Logger(MailService.name);
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @InjectRepository(Usuario)
+    private usuarioRepository: Repository<Usuario>,
+  ) {
     this.initializeResend();
+  }
+
+  /**
+   * Check if user has email notifications enabled
+   * @param email User's email address
+   * @returns Object with notification preferences
+   */
+  private async getUserNotificationPreferences(email: string): Promise<{
+    notif_email: boolean;
+    notif_mantenimiento: boolean;
+    notif_reportes_semanales: boolean;
+  } | null> {
+    try {
+      const user = await this.usuarioRepository.findOne({ where: { email } });
+      if (!user) return null;
+      return {
+        notif_email: user.notif_email ?? true,
+        notif_mantenimiento: user.notif_mantenimiento ?? true,
+        notif_reportes_semanales: user.notif_reportes_semanales ?? false,
+      };
+    } catch (error) {
+      this.logger.warn(`Could not fetch preferences for ${email}, defaulting to enabled`);
+      return { notif_email: true, notif_mantenimiento: true, notif_reportes_semanales: false };
+    }
+  }
+
+  /**
+   * Send email only if user has notifications enabled
+   * Important emails (isImportant=true) are always sent
+   */
+  async sendMailWithPreferences(
+    to: string,
+    subject: string,
+    html: string,
+    options: { isImportant?: boolean; isMaintenanceAlert?: boolean; isWeeklyReport?: boolean } = {}
+  ): Promise<boolean> {
+    const { isImportant = false, isMaintenanceAlert = false, isWeeklyReport = false } = options;
+    
+    // Important emails are always sent
+    if (isImportant) {
+      await this.sendMail(to, subject, html);
+      return true;
+    }
+    
+    const prefs = await this.getUserNotificationPreferences(to);
+    
+    // If no user found or general email disabled, don't send (except important)
+    if (!prefs || !prefs.notif_email) {
+      this.logger.log(`Email to ${to} skipped: notifications disabled`);
+      return false;
+    }
+    
+    // Check specific notification type
+    if (isMaintenanceAlert && !prefs.notif_mantenimiento) {
+      this.logger.log(`Maintenance alert to ${to} skipped: preference disabled`);
+      return false;
+    }
+    
+    if (isWeeklyReport && !prefs.notif_reportes_semanales) {
+      this.logger.log(`Weekly report to ${to} skipped: preference disabled`);
+      return false;
+    }
+    
+    await this.sendMail(to, subject, html);
+    return true;
   }
 
   /**
@@ -36,7 +109,7 @@ export class MailService {
   async sendMail(to: string, subject: string, html: string): Promise<void> {
     try {
       const { data, error } = await this.resend.emails.send({
-        from: this.configService.get<string>("MAIL_FROM") || 'Rápido Sur <noreply@send.sbravo.app>',
+        from: this.configService.get<string>("MAIL_FROM") || 'Rápido Sur <onboarding@resend.dev>',
         to: [to],
         subject,
         html,
@@ -55,7 +128,8 @@ export class MailService {
   }
 
   /**
-   * Send preventive maintenance alert to maintenance manager
+   * Send preventive maintenance alert to ALL maintenance managers and admins
+   * Sends to users with role JefeMantenimiento or Administrador who have notifications enabled
    * @param alerts Array of alert objects with vehicle information
    */
   async sendPreventiveAlerts(
@@ -65,14 +139,52 @@ export class MailService {
       razon: string;
     }>,
   ): Promise<void> {
-    const managerEmail = this.configService.get<string>(
-      "MAINTENANCE_MANAGER_EMAIL",
-    );
+    // Find all maintenance managers and admins with maintenance notifications enabled
+    const managers = await this.usuarioRepository.find({
+      where: [
+        { rol: RolUsuario.JefeMantenimiento, activo: true, notif_mantenimiento: true },
+        { rol: RolUsuario.Administrador, activo: true, notif_mantenimiento: true },
+      ],
+    });
 
-    if (!managerEmail) {
-      this.logger.error("MAINTENANCE_MANAGER_EMAIL not configured");
-      throw new Error("Manager email not configured in environment variables");
+    if (managers.length === 0) {
+      // Fallback to environment variable if no managers found
+      const fallbackEmail = this.configService.get<string>("MAINTENANCE_MANAGER_EMAIL");
+      if (fallbackEmail) {
+        this.logger.warn("No managers with notifications enabled found, using fallback email");
+        await this.sendPreventiveAlertsToEmail(fallbackEmail, alerts);
+      } else {
+        this.logger.error("No managers found and MAINTENANCE_MANAGER_EMAIL not configured");
+      }
+      return;
     }
+
+    this.logger.log(`Sending preventive alerts to ${managers.length} managers`);
+
+    // Send to all managers
+    for (const manager of managers) {
+      try {
+        await this.sendPreventiveAlertsToEmail(manager.email, alerts);
+        this.logger.log(`Preventive alert sent to ${manager.email}`);
+      } catch (error) {
+        this.logger.error(`Failed to send preventive alert to ${manager.email}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Send preventive alerts to a specific email
+   * @param email Recipient email address
+   * @param alerts Array of alert objects
+   */
+  private async sendPreventiveAlertsToEmail(
+    email: string,
+    alerts: Array<{
+      patente: string;
+      modelo: string;
+      razon: string;
+    }>,
+  ): Promise<void> {
 
     const alertRows = alerts
       .map(
@@ -128,10 +240,11 @@ export class MailService {
       </html>
     `;
 
+    // Send directly (preferences already checked in parent method)
     await this.sendMail(
-      managerEmail,
+      email,
       "⚠️ Alertas de Mantenimiento Preventivo - Rápido Sur",
-      html,
+      html
     );
   }
 
@@ -196,10 +309,12 @@ export class MailService {
       </html>
     `;
 
-    await this.sendMail(
+    // Work order assignment is IMPORTANT - always sent
+    await this.sendMailWithPreferences(
       mechanicEmail,
       `Nueva Orden de Trabajo: ${workOrderNumber}`,
       html,
+      { isImportant: true }
     );
   }
 
@@ -258,10 +373,12 @@ export class MailService {
       </html>
     `;
 
-    await this.sendMail(
+    // OT creation notification to manager is IMPORTANT
+    await this.sendMailWithPreferences(
       managerEmail,
       `✅ Nueva OT Creada: ${workOrderNumber}`,
       managerHtml,
+      { isImportant: true }
     );
 
     // Email to mechanic if assigned
@@ -301,10 +418,12 @@ export class MailService {
         </html>
       `;
 
-      await this.sendMail(
+      // OT assignment to mechanic is IMPORTANT
+      await this.sendMailWithPreferences(
         mechanicEmail,
         `🔧 Nueva OT Asignada: ${workOrderNumber}`,
         mechanicHtml,
+        { isImportant: true }
       );
     }
   }
@@ -362,19 +481,21 @@ export class MailService {
       </html>
     `;
 
-    // Send to manager
-    await this.sendMail(
+    // OT updates are IMPORTANT
+    await this.sendMailWithPreferences(
       managerEmail,
       `🔄 OT Actualizada: ${workOrderNumber}`,
       html,
+      { isImportant: true }
     );
 
     // Send to mechanic if assigned
     if (mechanicEmail && mechanicName) {
-      await this.sendMail(
+      await this.sendMailWithPreferences(
         mechanicEmail,
         `🔄 OT Actualizada: ${workOrderNumber}`,
         html,
+        { isImportant: true }
       );
     }
   }
@@ -428,10 +549,12 @@ export class MailService {
       </html>
     `;
 
-    await this.sendMail(
+    // OT completion is IMPORTANT
+    await this.sendMailWithPreferences(
       managerEmail,
       `✅ OT Finalizada: ${workOrderNumber}`,
       html,
+      { isImportant: true }
     );
   }
 
@@ -520,10 +643,12 @@ export class MailService {
       </html>
     `;
 
-    await this.sendMail(
+    // Low stock alerts are maintenance alerts - respect preferences
+    await this.sendMailWithPreferences(
       managerEmail,
       "⚠️ Alerta de Stock Bajo - Repuestos - Rápido Sur",
       html,
+      { isMaintenanceAlert: true }
     );
 
     this.logger.log(`Low stock alert sent to ${managerEmail} for ${lowStockParts.length} parts`);
