@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -49,6 +50,7 @@ const vehicleSchema = z.object({
     .number({ invalid_type_error: "El kilometraje debe ser un número" })
     .int("El kilometraje debe ser un número entero")
     .min(0, "El kilometraje debe ser positivo")
+    .max(9999999, "El kilometraje no puede superar 9.999.999 km")
     .optional()
     .or(z.literal(0)),
 })
@@ -73,6 +75,8 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
+    watch,
   } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
@@ -179,6 +183,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
                 <Input
                   id="patente"
                   placeholder="AB-CD-12 o ABCD-12"
+                  maxLength={10}
                   {...register("patente")}
                   aria-invalid={!!errors.patente}
                   disabled={loading}
@@ -191,6 +196,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
                 <Input
                   id="marca"
                   placeholder="Toyota"
+                  maxLength={50}
                   {...register("marca")}
                   aria-invalid={!!errors.marca}
                   disabled={loading}
@@ -203,6 +209,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
                 <Input
                   id="modelo"
                   placeholder="Hilux"
+                  maxLength={50}
                   {...register("modelo")}
                   aria-invalid={!!errors.modelo}
                   disabled={loading}
@@ -212,17 +219,25 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
 
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="anno">Año *</Label>
-                <Input
-                  id="anno"
-                  type="number"
-                  placeholder="2024"
-                  min="1900"
-                  max={new Date().getFullYear() + 1}
-                  step="1"
-                  {...register("anno", { valueAsNumber: true })}
-                  aria-invalid={!!errors.anno}
+                <Select
+                  value={watch("anno")?.toString() || ""}
+                  onValueChange={(value) => setValue("anno", parseInt(value))}
                   disabled={loading}
-                />
+                >
+                  <SelectTrigger id="anno" className={errors.anno ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Seleccione el año" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                    {Array.from(
+                      { length: new Date().getFullYear() - 1900 + 2 },
+                      (_, i) => new Date().getFullYear() + 1 - i
+                    ).map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {errors.anno && <p className="text-xs text-destructive">{errors.anno.message}</p>}
               </div>
 
@@ -230,14 +245,19 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
                 <Label htmlFor="kilometraje_actual">Kilometraje Actual</Label>
                 <Input
                   id="kilometraje_actual"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="0"
-                  min="0"
-                  step="1"
-                  {...register("kilometraje_actual", { valueAsNumber: true })}
+                  maxLength={7}
+                  value={watch("kilometraje_actual")?.toString() || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 7)
+                    setValue("kilometraje_actual", value ? parseInt(value) : 0)
+                  }}
                   aria-invalid={!!errors.kilometraje_actual}
                   disabled={loading}
                 />
+                <p className="text-xs text-muted-foreground">Máximo 9.999.999 km</p>
                 {errors.kilometraje_actual && <p className="text-xs text-destructive">{errors.kilometraje_actual.message}</p>}
               </div>
             </div>

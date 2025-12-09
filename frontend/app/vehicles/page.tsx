@@ -54,6 +54,9 @@ export default function VehiclesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null)
+  
+  // Verificar si el usuario puede editar (Admin y JefeMantenimiento)
+  const canEdit = authService.hasAnyRole(["Administrador", "JefeMantenimiento"])
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
 
@@ -172,10 +175,12 @@ export default function VehiclesPage() {
               <p className="text-sm text-muted-foreground">Administre la flota de vehículos</p>
             </div>
           </div>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4" />
-            Agregar Vehículo
-          </Button>
+          {canEdit && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4" />
+              Agregar Vehículo
+            </Button>
+          )}
         </div>
       </header>
 
@@ -268,7 +273,7 @@ export default function VehiclesPage() {
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      {canEdit && <TableHead className="text-right">Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -280,21 +285,23 @@ export default function VehiclesPage() {
                         <TableCell>{vehicle.anno}</TableCell>
                         <TableCell>{getStatusBadge(vehicle.estado)}</TableCell>
                         <TableCell>{vehicle.kilometraje_actual?.toLocaleString() || 0} km</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(vehicle)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => handleDeleteClick(vehicle)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(vehicle)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleDeleteClick(vehicle)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

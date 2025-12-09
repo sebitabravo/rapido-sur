@@ -68,9 +68,11 @@ export class CreateVehiculoDto {
     example: 5000,
     type: Number,
     minimum: 0,
+    maximum: 9999999,
   })
   @IsInt()
   @Min(0, { message: "El kilometraje no puede ser negativo" })
+  @Max(9999999, { message: "El kilometraje no puede superar 9.999.999 km" })
   @IsOptional()
   kilometraje_actual?: number;
 }
