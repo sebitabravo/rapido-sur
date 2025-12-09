@@ -1,16 +1,12 @@
 'use client'
 
 /**
- * Demo Page - Sistema de Feedback Visual
- * Esta página demuestra todos los componentes de feedback visual
- * Útil para testing y como referencia para developers
+ * Página de Testing - Alertas, Notificaciones y Correos
+ * Prueba las funcionalidades principales del sistema
  */
 
-import { useState } from 'react'
-import { useToastFeedback } from '@/hooks/use-toast-feedback'
-import { LoadingButton } from '@/components/ui/loading-button'
-import { LoadingOverlay } from '@/components/ui/loading-overlay'
-import { LoadingSpinner } from '@/components/loading-spinner'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,40 +15,198 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Info,
-  Loader2,
   ArrowLeft,
+  PlayCircle,
+  Bell,
+  Mail,
+  Zap,
+  Loader2,
+  Info,
+  RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
+import { api } from '@/lib/api'
+import { authService } from '@/lib/auth'
+import { toast } from 'sonner'
 
-export default function FeedbackDemoPage() {
-  const {
-    showSuccess,
-    showError,
-    showWarning,
-    showInfo,
-    showLoading,
-    showLoadingManual,
-    dismiss,
-    messages,
-  } = useToastFeedback()
+export default function DemoFeedbackPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [alerts, setAlerts] = useState<any[]>([])
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showOverlay, setShowOverlay] = useState(false)
-  const [showSpinner, setShowSpinner] = useState(false)
+  useEffect(() => {
+    const currentUser = authService.getUser()
+    setUser(currentUser)
+    
+    if (!authService.isAuthenticated()) {
+      router.push('/login')
+      return
+    }
 
-  // Simular operación async
-  const simulateAsync = (duration = 2000): Promise<void> => {
-    return new Promise((resolve) => setTimeout(resolve, duration))
+    // Solo administradores pueden acceder a esta página
+    if (currentUser?.rol !== 'Administrador') {
+      toast.error('Acceso denegado', {
+        description: 'Solo los administradores pueden acceder a esta página'
+      })
+      router.push('/dashboard')
+      return
+    }
+    
+    loadAlerts()
+  }, [router])
+
+  const setLoadingState = (key: string, value: boolean) => {
+    setLoading(prev => ({ ...prev, [key]: value }))
   }
 
-  // Simular operación async con error
-  const simulateError = (): Promise<void> => {
-    return new Promise((_, reject) => setTimeout(() => reject(new Error('Simulado')), 2000))
+  const loadAlerts = async () => {
+    try {
+      const response = await api.alerts.getAll()
+      setAlerts(response.data || [])
+    } catch (error) {
+      console.error('Error loading alerts:', error)
+    }
   }
+
+  // ==================== ALERTAS ====================
+  
+  const handleVerifyAlerts = async () => {
+    setLoadingState('verifyAlerts', true)
+    try {
+      const response = await api.alerts.verificarAhora()
+      toast.success(`Verificación completada`, {
+        description: `${response.data.alertasGeneradas} alertas generadas`
+      })
+      await loadAlerts()
+    } catch (error: any) {
+      toast.error('Error al verificar alertas', {
+        description: error.response?.data?.message || error.message
+      })
+    } finally {
+      setLoadingState('verifyAlerts', false)
+    }
+  }
+
+  const handleCreateTestAlerts = async () => {
+    setLoadingState('createTestAlerts', true)
+    try {
+      const response = await api.alerts.crearPrueba()
+      toast.success(`Alertas de prueba creadas`, {
+        description: `${response.data.alertas.length} alertas creadas`
+      })
+      await loadAlerts()
+    } catch (error: any) {
+      toast.error('Error al crear alertas', {
+        description: error.response?.data?.message || error.message
+      })
+    } finally {
+      setLoadingState('createTestAlerts', false)
+    }
+  }
+
+  const handleDismissAlert = async (alertId: number) => {
+    setLoadingState(`dismiss-${alertId}`, true)
+    try {
+      await api.alerts.descartar(alertId, 'Descartada desde página de testing')
+      toast.success('Alerta descartada')
+      await loadAlerts()
+    } catch (error: any) {
+      toast.error('Error al descartar', {
+        description: error.response?.data?.message || error.message
+      })
+    } finally {
+      setLoadingState(`dismiss-${alertId}`, false)
+    }
+  }
+
+  const handleCreateWOFromAlert = async (alertId: number) => {
+    setLoadingState(`createWO-${alertId}`, true)
+    try {
+      const response = await api.alerts.crearOrdenTrabajo(alertId, { prioridad: 'MEDIA' })
+      toast.success(`Orden de trabajo creada`, {
+        description: `${response.data.ordenTrabajo.numero_ot}`
+      })
+      await loadAlerts()
+    } catch (error: any) {
+      toast.error('Error al crear OT', {
+        description: error.response?.data?.message || error.message
+      })
+    } finally {
+      setLoadingState(`createWO-${alertId}`, false)
+    }
+  }
+
+  // ==================== NOTIFICACIONES TOAST ====================
+  
+  const showAllToasts = () => {
+    toast('Notificación genérica', { 
+      description: 'Este es un mensaje normal del sistema' 
+    })
+    
+    setTimeout(() => {
+      toast.success('Operación exitosa', { 
+        description: 'La orden de trabajo fue creada correctamente' 
+      })
+    }, 500)
+
+    setTimeout(() => {
+      toast.info('Información', { 
+        description: 'El mantenimiento está programado para mañana' 
+      })
+    }, 1000)
+
+    setTimeout(() => {
+      toast.warning('Advertencia', { 
+        description: 'El vehículo requiere mantención en 500 km' 
+      })
+    }, 1500)
+
+    setTimeout(() => {
+      toast.error('Error', { 
+        description: 'No se pudo conectar con el servidor' 
+      })
+    }, 2000)
+  }
+
+  // ==================== CORREOS ====================
+  
+  const handleSendTestEmail = async () => {
+    setLoadingState('sendEmail', true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mail/test`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success('Email de prueba enviado', {
+          description: data.message
+        })
+      } else {
+        toast.error('Error al enviar email', {
+          description: data.error || data.message
+        })
+      }
+    } catch (error: any) {
+      toast.error('Error al enviar email', {
+        description: error.message
+      })
+    } finally {
+      setLoadingState('sendEmail', false)
+    }
+  }
+
+  const activeAlerts = alerts.filter(a => a.estado === 'Activa')
+  const isAdmin = user?.rol === 'Administrador'
+  const canManage = isAdmin || user?.rol === 'JefeMantenimiento'
 
   return (
-    <div className="container max-w-6xl py-8">
+    <div className="container max-w-4xl py-8">
       {/* Header */}
       <div className="mb-8">
         <Link href="/dashboard">
@@ -61,369 +215,264 @@ export default function FeedbackDemoPage() {
             Volver al Dashboard
           </Button>
         </Link>
-        <h1 className="text-4xl font-bold mb-2">Sistema de Feedback Visual</h1>
+        <h1 className="text-3xl font-bold mb-2">🧪 Testing del Sistema</h1>
         <p className="text-muted-foreground">
-          Demostración completa de todos los componentes de feedback visual
+          Prueba alertas, notificaciones y correos electrónicos
         </p>
+        <div className="flex gap-2 mt-2">
+          <Badge variant="outline">{user?.rol}</Badge>
+          <Badge variant="secondary">{user?.email}</Badge>
+        </div>
       </div>
 
-      <div className="space-y-8">
-        {/* Toast Notifications */}
+      <div className="space-y-6">
+        
+        {/* ALERTAS PREVENTIVAS */}
         <Card>
           <CardHeader>
-            <CardTitle>Toast Notifications</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-orange-500" />
+              Alertas Preventivas
+            </CardTitle>
             <CardDescription>
-              Notificaciones no intrusivas que aparecen temporalmente
+              Genera y gestiona alertas de mantenimiento preventivo
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button
-                onClick={() =>
-                  showSuccess('Operación exitosa', {
-                    description: 'El vehículo fue creado correctamente',
-                  })
-                }
-                variant="default"
-                className="w-full"
-              >
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Toast de Éxito
-              </Button>
-
-              <Button
-                onClick={() =>
-                  showError('Error en la operación', {
-                    description: 'No se pudo conectar con el servidor',
-                    action: {
-                      label: 'Reintentar',
-                      onClick: () => showInfo('Reintentando...'),
-                    },
-                  })
-                }
-                variant="destructive"
-                className="w-full"
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                Toast de Error
-              </Button>
-
-              <Button
-                onClick={() =>
-                  showWarning('Advertencia', {
-                    description: 'Esta acción no se puede deshacer',
-                  })
-                }
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                onClick={loadAlerts} 
                 variant="outline"
-                className="w-full border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                disabled={loading.loadAlerts}
               >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Toast de Advertencia
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading.loadAlerts ? 'animate-spin' : ''}`} />
+                Recargar Alertas
               </Button>
-
-              <Button
-                onClick={() =>
-                  showInfo('Información', {
-                    description: 'El mantenimiento está programado para mañana',
-                  })
-                }
-                variant="outline"
-                className="w-full border-blue-500 text-blue-600 hover:bg-blue-50"
-              >
-                <Info className="mr-2 h-4 w-4" />
-                Toast Informativo
-              </Button>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Toast con Promise (automático)</h4>
-              <Button
-                onClick={async () => {
-                  try {
-                    await showLoading(
-                      simulateAsync(3000),
-                      'Guardando vehículo...',
-                      'Vehículo guardado exitosamente',
-                      'Error al guardar el vehículo'
-                    )
-                  } catch (error) {
-                    // El error ya fue mostrado automáticamente
-                  }
-                }}
-                className="w-full"
-              >
-                <Loader2 className="mr-2 h-4 w-4" />
-                Toast con Loading Automático (3s)
-              </Button>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Toast con Error en Promise</h4>
-              <Button
-                onClick={async () => {
-                  try {
-                    await showLoading(
-                      simulateError(),
-                      'Guardando...',
-                      'Guardado!',
-                      'Error al guardar'
-                    )
-                  } catch (error) {
-                    // El error ya fue mostrado automáticamente
-                  }
-                }}
-                variant="destructive"
-                className="w-full"
-              >
-                Simular Error en Promise (2s)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Loading States */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Loading States</CardTitle>
-            <CardDescription>
-              Diferentes tipos de indicadores de carga
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Loading Button */}
-            <div>
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                Loading Button
-                <Badge variant="outline">Recomendado para formularios</Badge>
-              </h4>
-              <div className="flex gap-4">
-                <LoadingButton
-                  loading={isSubmitting}
-                  onClick={() => {
-                    setIsSubmitting(true)
-                    setTimeout(() => setIsSubmitting(false), 3000)
-                  }}
-                  className="flex-1"
+              
+              {canManage && (
+                <Button 
+                  onClick={handleVerifyAlerts}
+                  disabled={loading.verifyAlerts}
                 >
-                  {isSubmitting ? 'Guardando...' : 'Guardar Vehículo'}
-                </LoadingButton>
-
-                <LoadingButton
-                  loading={isSubmitting}
-                  loadingText="Eliminando..."
-                  onClick={() => {
-                    setIsSubmitting(true)
-                    setTimeout(() => setIsSubmitting(false), 3000)
-                  }}
-                  variant="destructive"
-                  className="flex-1"
+                  {loading.verifyAlerts ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                  )}
+                  Ejecutar Verificación (CRON)
+                </Button>
+              )}
+              
+              {isAdmin && (
+                <Button 
+                  onClick={handleCreateTestAlerts}
+                  disabled={loading.createTestAlerts}
+                  variant="secondary"
                 >
-                  Eliminar
-                </LoadingButton>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Loading Spinner */}
-            <div>
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                Loading Spinner
-                <Badge variant="outline">Para secciones pequeñas</Badge>
-              </h4>
-              <Button
-                onClick={() => {
-                  setShowSpinner(true)
-                  setTimeout(() => setShowSpinner(false), 3000)
-                }}
-                variant="outline"
-                className="w-full"
-              >
-                {showSpinner ? 'Cargando...' : 'Mostrar Loading Spinner (3s)'}
-              </Button>
-              {showSpinner && (
-                <div className="mt-4 border rounded-lg p-4">
-                  <LoadingSpinner message="Cargando datos del vehículo..." />
-                </div>
+                  {loading.createTestAlerts ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="mr-2 h-4 w-4" />
+                  )}
+                  Crear Alertas de Prueba
+                </Button>
               )}
             </div>
 
             <Separator />
 
-            {/* Loading Overlay */}
-            <div className="relative">
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                Loading Overlay
-                <Badge variant="outline">Para bloquear secciones</Badge>
+            {/* Lista de alertas activas */}
+            <div>
+              <h4 className="font-medium mb-2">
+                Alertas Activas ({activeAlerts.length})
               </h4>
-              <Button
-                onClick={() => {
-                  setShowOverlay(true)
-                  setTimeout(() => setShowOverlay(false), 3000)
-                }}
-                variant="outline"
-                className="w-full"
-              >
-                Mostrar Loading Overlay (3s)
-              </Button>
-
-              <div className="mt-4 border rounded-lg p-8 relative min-h-[200px]">
-                {showOverlay && <LoadingOverlay message="Procesando orden de trabajo..." />}
-                <h5 className="font-medium mb-2">Contenido de ejemplo</h5>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Este contenido se bloqueará cuando el loading overlay esté activo.
+              
+              {activeAlerts.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
+                  No hay alertas activas. Usa "Crear Alertas de Prueba" para generar algunas.
                 </p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="h-20 bg-muted rounded" />
-                  <div className="h-20 bg-muted rounded" />
-                  <div className="h-20 bg-muted rounded" />
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {activeAlerts.slice(0, 10).map((alert) => (
+                    <div 
+                      key={alert.id} 
+                      className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className={`h-4 w-4 ${
+                          alert.tipo_alerta === 'Kilometraje' ? 'text-red-500' : 'text-orange-500'
+                        }`} />
+                        <div>
+                          <p className="text-sm font-medium">{alert.vehiculo?.patente}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {alert.tipo_alerta} - {alert.mensaje?.substring(0, 50)}...
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {canManage && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            onClick={() => handleCreateWOFromAlert(alert.id)}
+                            disabled={loading[`createWO-${alert.id}`]}
+                          >
+                            {loading[`createWO-${alert.id}`] ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Crear OT'
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDismissAlert(alert.id)}
+                            disabled={loading[`dismiss-${alert.id}`]}
+                          >
+                            {loading[`dismiss-${alert.id}`] ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Descartar'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Ejemplo Completo CRUD */}
+        {/* NOTIFICACIONES TOAST */}
         <Card>
           <CardHeader>
-            <CardTitle>Ejemplo Completo: Crear Vehículo</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              Notificaciones Toast
+            </CardTitle>
             <CardDescription>
-              Demostración de un flujo completo con feedback visual
+              Prueba los diferentes tipos de notificaciones que aparecen en pantalla
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <SimulatedVehicleForm />
+          <CardContent className="space-y-4">
+            <Button onClick={showAllToasts} className="w-full">
+              <Bell className="mr-2 h-4 w-4" />
+              Mostrar Todos los Tipos de Notificación
+            </Button>
+            
+            <Separator />
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <Button 
+                variant="default" 
+                onClick={() => toast.success('Éxito', { description: 'Operación completada correctamente' })}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Éxito
+              </Button>
+              
+              <Button 
+                variant="destructive" 
+                onClick={() => toast.error('Error', { description: 'Algo salió mal' })}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Error
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                onClick={() => toast.warning('Advertencia', { description: 'Ten cuidado con esta acción' })}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Warning
+              </Button>
+              
+              <Button 
+                variant="outline"
+                onClick={() => toast.info('Información', { description: 'Dato importante para ti' })}
+              >
+                <Info className="mr-2 h-4 w-4" />
+                Info
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Mensajes Predefinidos */}
+        {/* CORREOS ELECTRÓNICOS */}
         <Card>
           <CardHeader>
-            <CardTitle>Mensajes Predefinidos</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-500" />
+              Correos Electrónicos
+            </CardTitle>
             <CardDescription>
-              Mensajes estandarizados para operaciones comunes
+              Prueba el envío de correos electrónicos via Resend
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await showLoading(
-                    simulateAsync(2000),
-                    messages.create.loading,
-                    messages.create.success,
-                    messages.create.error
-                  )
-                }}
-              >
-                Crear
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await showLoading(
-                    simulateAsync(2000),
-                    messages.update.loading,
-                    messages.update.success,
-                    messages.update.error
-                  )
-                }}
-              >
-                Actualizar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await showLoading(
-                    simulateAsync(2000),
-                    messages.delete.loading,
-                    messages.delete.success,
-                    messages.delete.error
-                  )
-                }}
-              >
-                Eliminar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await showLoading(
-                    simulateAsync(2000),
-                    messages.export.loading,
-                    messages.export.success,
-                    messages.export.error
-                  )
-                }}
-              >
-                Exportar
-              </Button>
+          <CardContent className="space-y-4">
+            {isAdmin ? (
+              <>
+                <Button 
+                  onClick={handleSendTestEmail}
+                  disabled={loading.sendEmail}
+                  className="w-full"
+                >
+                  {loading.sendEmail ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar Email de Prueba
+                </Button>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  El email se enviará a la dirección configurada en el sistema
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Solo los administradores pueden enviar emails de prueba
+              </p>
+            )}
+            
+            <Separator />
+            
+            <div className="text-sm space-y-2">
+              <h4 className="font-medium">Correos que envía el sistema:</h4>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                <li><strong>Alertas Preventivas:</strong> Se envían a todos los Jefes de Mantenimiento y Admins</li>
+                <li><strong>Asignación de OT:</strong> Se envía al mecánico asignado (siempre)</li>
+                <li><strong>Cambio de estado OT:</strong> Se envía al mecánico y jefe</li>
+                <li><strong>Stock bajo:</strong> Se envía a Jefes y Admins con notif. habilitadas</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* INFO */}
+        <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  Cómo probar el flujo completo
+                </p>
+                <ol className="list-decimal list-inside text-blue-800 dark:text-blue-200 mt-2 space-y-1">
+                  <li>Crea alertas de prueba con el botón "Crear Alertas de Prueba"</li>
+                  <li>Observa cómo aparecen las notificaciones toast</li>
+                  <li>Crea una OT desde una alerta → El mecánico recibirá un email</li>
+                  <li>O descarta la alerta si es una falsa alarma</li>
+                  <li>Prueba el envío de email directo con "Enviar Email de Prueba"</li>
+                </ol>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
-}
-
-// Componente de ejemplo para formulario
-function SimulatedVehicleForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { showLoading } = useToastFeedback()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      await showLoading(
-        new Promise((resolve) => setTimeout(resolve, 2000)),
-        'Creando vehículo...',
-        'Vehículo ABC-123 creado exitosamente',
-        'Error al crear el vehículo'
-      )
-    } catch (error) {
-      // Error ya manejado
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium">Patente</label>
-          <input
-            className="w-full mt-1 px-3 py-2 border rounded-md"
-            placeholder="ABC-123"
-            disabled={isSubmitting}
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">Marca</label>
-          <input
-            className="w-full mt-1 px-3 py-2 border rounded-md"
-            placeholder="Toyota"
-            disabled={isSubmitting}
-          />
-        </div>
-      </div>
-
-      <LoadingButton
-        loading={isSubmitting}
-        loadingText="Creando vehículo..."
-        type="submit"
-        className="w-full"
-      >
-        Crear Vehículo
-      </LoadingButton>
-    </form>
   )
 }
