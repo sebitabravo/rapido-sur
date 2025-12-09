@@ -105,6 +105,14 @@ export default function WorkOrdersPage() {
         } : null,
       }))
 
+      // Filtrar órdenes para Mecánicos - solo las asignadas a ellos
+      const currentUser = authService.getUser()
+      if (currentUser?.rol === "Mecanico") {
+        orders = orders.filter((order: WorkOrder) => 
+          order.mecanico?.id === currentUser.id
+        )
+      }
+
       // Client-side filtering for search term
       if (debouncedSearchTerm) {
         const searchLower = debouncedSearchTerm.toLowerCase()

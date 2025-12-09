@@ -261,6 +261,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Ej: Cambio de aceite y filtro"
+                maxLength={500}
                 rows={3}
                 className={errors.descripcion ? "border-destructive" : ""}
               />
@@ -347,10 +348,14 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
                           </TableCell>
                           <TableCell>
                             <Input
-                              type="number"
-                              min="1"
-                              value={usage.cantidad_usada}
-                              onChange={(e) => handlePartChange(index, "cantidad_usada", parseInt(e.target.value))}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={4}
+                              value={usage.cantidad_usada?.toString() || ""}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 4)
+                                handlePartChange(index, "cantidad_usada", value ? parseInt(value) : 1)
+                              }}
                             />
                           </TableCell>
                           <TableCell>

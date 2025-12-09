@@ -210,11 +210,15 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
               <Label htmlFor="costo_estimado">Costo Estimado (opcional)</Label>
               <Input
                 id="costo_estimado"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="150000"
-                min="0"
-                step="1000"
-                {...register("costo_estimado", { valueAsNumber: true })}
+                maxLength={9}
+                value={watch("costo_estimado")?.toString() || ""}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 9)
+                  setValue("costo_estimado", value ? parseInt(value) : undefined)
+                }}
                 aria-invalid={!!errors.costo_estimado}
                 disabled={loading}
               />
@@ -226,6 +230,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
               <Textarea
                 id="descripcion"
                 placeholder="Describa el trabajo a realizar..."
+                maxLength={1000}
                 {...register("descripcion")}
                 aria-invalid={!!errors.descripcion}
                 disabled={loading}

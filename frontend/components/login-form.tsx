@@ -75,6 +75,7 @@ export function LoginForm() {
               placeholder="Ingrese su correo electrónico"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              maxLength={100}
               required
               disabled={isLoading}
               autoComplete="email"
@@ -89,6 +90,7 @@ export function LoginForm() {
               placeholder="Ingrese su contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              maxLength={128}
               required
               disabled={isLoading}
               autoComplete="current-password"

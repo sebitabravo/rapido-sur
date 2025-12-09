@@ -53,6 +53,12 @@ export default function PreventivePlansPage() {
       router.push("/login")
       return
     }
+    // Solo Admin y JefeMantenimiento pueden ver planes preventivos
+    if (!authService.hasAnyRole(["Administrador", "JefeMantenimiento"])) {
+      toast.error("No tienes permiso para acceder a esta sección")
+      router.push("/dashboard")
+      return
+    }
     loadPlans()
   }, [router, debouncedSearchTerm, currentPage, pageSize])
 

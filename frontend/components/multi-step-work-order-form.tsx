@@ -173,6 +173,7 @@ export function MultiStepWorkOrderForm({ onSubmit, onCancel, vehicles }: MultiSt
                   placeholder="Describa detalladamente el trabajo a realizar..."
                   value={formData.descripcion}
                   onChange={(e) => updateFormData("descripcion", e.target.value)}
+                  maxLength={1000}
                   rows={6}
                 />
               </div>
@@ -184,6 +185,7 @@ export function MultiStepWorkOrderForm({ onSubmit, onCancel, vehicles }: MultiSt
                   placeholder="Observaciones, notas o comentarios adicionales..."
                   value={formData.observaciones}
                   onChange={(e) => updateFormData("observaciones", e.target.value)}
+                  maxLength={500}
                   rows={4}
                 />
               </div>
@@ -196,10 +198,15 @@ export function MultiStepWorkOrderForm({ onSubmit, onCancel, vehicles }: MultiSt
                 <Label htmlFor="costoEstimado">Costo Estimado</Label>
                 <Input
                   id="costoEstimado"
-                  type="number"
-                  placeholder="0.00"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  maxLength={9}
                   value={formData.costoEstimado}
-                  onChange={(e) => updateFormData("costoEstimado", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 9)
+                    updateFormData("costoEstimado", value)
+                  }}
                 />
               </div>
 

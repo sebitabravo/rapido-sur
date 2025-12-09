@@ -8,12 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText, Package, Calendar, User } from "lucide-react"
+import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText, Package, Calendar } from "lucide-react"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { RecentWorkOrders } from "@/components/recent-work-orders"
 import { ActiveAlerts } from "@/components/active-alerts"
 import { MaintenanceTrends } from "@/components/maintenance-trends"
 import { MechanicDashboard } from "@/components/mechanic-dashboard"
+import { AvatarDisplay } from "@/components/avatar-selector"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -105,9 +106,13 @@ export default function DashboardPage() {
               size="icon"
               onClick={() => router.push("/profile")}
               title="Mi perfil"
-              className="relative"
+              className="relative h-10 w-10 rounded-full p-0 overflow-hidden"
             >
-              <User className="h-5 w-5" />
+              <AvatarDisplay 
+                avatarId={user?.avatar || "default"} 
+                size="sm" 
+                userName={user?.nombre_completo}
+              />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Cerrar sesión">
               <LogOut className="h-5 w-5" />
@@ -123,7 +128,8 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Resumen general del estado de la flota</p>
         </div>
 
-        <div className={`grid grid-cols-2 ${isAdmin ? "md:grid-cols-7" : "md:grid-cols-6"} gap-4 mb-6`}>
+        {/* Navigation buttons - filtered by role */}
+        <div className={`grid grid-cols-2 ${isAdmin ? "md:grid-cols-7" : isMechanic ? "md:grid-cols-3" : "md:grid-cols-6"} gap-4 mb-6`}>
           <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToVehicles}>
             <Truck className="h-6 w-6" />
             <span className="text-sm">Vehículos</span>
@@ -132,22 +138,29 @@ export default function DashboardPage() {
             <Wrench className="h-6 w-6" />
             <span className="text-sm">Órdenes</span>
           </Button>
-          <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToAlerts}>
-            <AlertTriangle className="h-6 w-6" />
-            <span className="text-sm">Alertas</span>
-          </Button>
-          <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToReports}>
-            <FileText className="h-6 w-6" />
-            <span className="text-sm">Reportes</span>
-          </Button>
+          {/* Mechanic only sees: Vehicles, Orders, Parts */}
+          {!isMechanic && (
+            <>
+              <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToAlerts}>
+                <AlertTriangle className="h-6 w-6" />
+                <span className="text-sm">Alertas</span>
+              </Button>
+              <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToReports}>
+                <FileText className="h-6 w-6" />
+                <span className="text-sm">Reportes</span>
+              </Button>
+            </>
+          )}
           <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToParts}>
             <Package className="h-6 w-6" />
             <span className="text-sm">Repuestos</span>
           </Button>
-          <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToPreventivePlans}>
-            <Calendar className="h-6 w-6" />
-            <span className="text-sm">Planes</span>
-          </Button>
+          {!isMechanic && (
+            <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToPreventivePlans}>
+              <Calendar className="h-6 w-6" />
+              <span className="text-sm">Planes</span>
+            </Button>
+          )}
           {isAdmin && (
             <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent" onClick={handleNavigateToUsers}>
               <Users className="h-6 w-6" />

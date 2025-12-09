@@ -192,6 +192,7 @@ export function PreventivePlanDialog({
               <Input
                 id="tipo_mantenimiento"
                 placeholder="Ej: Mantenimiento general"
+                maxLength={100}
                 {...register("tipo_mantenimiento")}
                 aria-invalid={!!errors.tipo_mantenimiento}
                 disabled={loading}
@@ -225,9 +226,15 @@ export function PreventivePlanDialog({
               </Label>
               <Input
                 id="intervalo"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                maxLength={7}
                 placeholder={tipo_intervalo === "KM" ? "10000" : "180"}
-                {...register("intervalo", { valueAsNumber: true })}
+                value={watch("intervalo")?.toString() || ""}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 7)
+                  setValue("intervalo", value ? parseInt(value) : 0)
+                }}
                 aria-invalid={!!errors.intervalo}
                 disabled={loading}
               />
@@ -239,9 +246,15 @@ export function PreventivePlanDialog({
                 <Label htmlFor="proximo_kilometraje">Próximo Kilometraje</Label>
                 <Input
                   id="proximo_kilometraje"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
                   placeholder="25000"
-                  {...register("proximo_kilometraje", { valueAsNumber: true })}
+                  value={watch("proximo_kilometraje")?.toString() || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 7)
+                    setValue("proximo_kilometraje", value ? parseInt(value) : undefined)
+                  }}
                   disabled={loading}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -265,6 +278,7 @@ export function PreventivePlanDialog({
               <Textarea
                 id="descripcion"
                 placeholder="Detalle las tareas a realizar en este mantenimiento..."
+                maxLength={1000}
                 {...register("descripcion")}
                 aria-invalid={!!errors.descripcion}
                 disabled={loading}
