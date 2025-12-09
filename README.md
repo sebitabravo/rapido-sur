@@ -1,5 +1,5 @@
 # Sistema de Gestión de Mantenimiento Vehicular - Rápido Sur
-
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sebitabravo/rapido-sur)
 Sistema web completo para la gestión de mantenimiento de la flota vehicular de Rápido Sur. Reduce fallas por mantenimiento atrasado en un 40% durante el primer año.
 
 ## 🏗️ Tech Stack
