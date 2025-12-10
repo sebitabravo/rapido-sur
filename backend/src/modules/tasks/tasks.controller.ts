@@ -40,7 +40,7 @@ import { RolUsuario } from "../../common/enums";
 @Controller("tareas")
 @UseGuards(JwtAuthGuard)
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(private readonly tasksService: TasksService) { }
 
   /**
    * GET /tareas
@@ -69,20 +69,25 @@ export class TasksController {
   /**
    * POST /tareas
    * Create a new task
+   * Mechanics can only add tasks to work orders assigned to them
    */
   @ApiOperation({
     summary: "Crear nueva tarea",
-    description: "Crea una nueva tarea dentro de una orden de trabajo",
+    description: "Crea una nueva tarea dentro de una orden de trabajo. Los mecánicos solo pueden agregar tareas a órdenes asignadas a ellos.",
   })
   @ApiBody({ type: CreateTareaDto })
   @ApiResponse({ status: 201, description: "Tarea creada exitosamente" })
   @ApiResponse({ status: 400, description: "Datos inválidos" })
+  @ApiResponse({ status: 403, description: "Mecánicos solo pueden agregar tareas a sus OT" })
   @ApiResponse({ status: 404, description: "Orden de trabajo no encontrada" })
   @UseGuards(RolesGuard)
-  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento, RolUsuario.Mecanico)
   @Post()
-  async create(@Body() createDto: CreateTareaDto): Promise<Tarea> {
-    return this.tasksService.create(createDto);
+  async create(
+    @Body() createDto: CreateTareaDto,
+    @Request() req: any,
+  ): Promise<Tarea> {
+    return this.tasksService.create(createDto, req.user);
   }
 
   /**

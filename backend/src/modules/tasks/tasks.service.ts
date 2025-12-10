@@ -26,15 +26,18 @@ export class TasksService {
     private readonly otRepository: Repository<OrdenTrabajo>,
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
-  ) {}
+  ) { }
 
   /**
    * Create new task
+   * If no mechanic is specified, inherits the mechanic from the work order
+   * Mechanics can only add tasks to work orders assigned to them
    */
-  async create(createDto: CreateTareaDto): Promise<Tarea> {
-    // Validate work order exists
+  async create(createDto: CreateTareaDto, user: Usuario): Promise<Tarea> {
+    // Validate work order exists (load mechanic for inheritance)
     const ordenTrabajo = await this.otRepository.findOne({
       where: { id: createDto.orden_trabajo_id },
+      relations: ["mecanico"], // Load mechanic to inherit if not specified
     });
     if (!ordenTrabajo) {
       throw new NotFoundException("Orden de trabajo no encontrada");
@@ -47,9 +50,20 @@ export class TasksService {
       );
     }
 
-    // Validate mechanic if provided
+    // SECURITY: Mechanics can only add tasks to their assigned work orders
+    if (user.rol === RolUsuario.Mecanico) {
+      if (!ordenTrabajo.mecanico || ordenTrabajo.mecanico.id !== user.id) {
+        throw new ForbiddenException(
+          "Solo puedes agregar tareas a órdenes de trabajo asignadas a ti",
+        );
+      }
+    }
+
+    // Determine mechanic: use specified one, or inherit from work order
     let mecanicoAsignado: Usuario | null = null;
+
     if (createDto.mecanico_asignado_id) {
+      // Explicit mechanic specified - validate and use
       mecanicoAsignado = await this.usuarioRepository.findOne({
         where: { id: createDto.mecanico_asignado_id },
       });
@@ -65,7 +79,11 @@ export class TasksService {
           "El usuario debe ser mecánico o jefe de mantenimiento",
         );
       }
+    } else if (ordenTrabajo.mecanico) {
+      // No mechanic specified - inherit from work order
+      mecanicoAsignado = ordenTrabajo.mecanico;
     }
+    // If neither specified nor in OT, mecanicoAsignado remains null
 
     // Create task
     const tarea = this.tareaRepository.create({
