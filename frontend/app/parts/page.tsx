@@ -33,6 +33,7 @@ interface Part {
 export default function PartsPage() {
   const router = useRouter()
   const [parts, setParts] = useState<Part[]>([])
+  const [allParts, setAllParts] = useState<Part[]>([]) // All parts for stats calculation
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(0)
@@ -75,6 +76,7 @@ export default function PartsPage() {
       const paginatedParts = partsData.slice(startIndex, endIndex)
 
       setParts(paginatedParts)
+      setAllParts(partsData) // Keep all parts for stats calculation
       setTotalPages(Math.ceil(totalParts / pageSize))
       setTotalItems(totalParts)
     } catch (error) {
@@ -138,8 +140,9 @@ export default function PartsPage() {
     }
   }
 
-  const lowStockCount = parts.filter(p => p.cantidad_stock <= p.stock_minimo && p.cantidad_stock > 0).length
-  const outOfStockCount = parts.filter(p => p.cantidad_stock === 0).length
+  // Calculate stats from ALL parts, not just current page
+  const lowStockCount = allParts.filter(p => p.cantidad_stock <= p.stock_minimo && p.cantidad_stock > 0).length
+  const outOfStockCount = allParts.filter(p => p.cantidad_stock === 0).length
 
   return (
     <div className="min-h-screen bg-background">
