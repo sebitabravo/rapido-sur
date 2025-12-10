@@ -85,6 +85,13 @@ export class Repuesto {
   stock_minimo: number;
 
   /**
+   * Whether the part is active (can be used in work orders)
+   * Must be deactivated before deletion for safety
+   */
+  @Column({ type: "boolean", default: true })
+  activo: boolean;
+
+  /**
    * Automatic timestamps
    */
   @CreateDateColumn({ type: "timestamp" })

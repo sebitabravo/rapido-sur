@@ -45,7 +45,7 @@ export class PartsController {
   constructor(
     private readonly partsService: PartsService,
     private readonly inventoryAlertsService: InventoryAlertsService,
-  ) {}
+  ) { }
 
   /**
    * GET /repuestos
@@ -215,18 +215,52 @@ export class PartsController {
   }
 
   /**
-   * DELETE /repuestos/:id
-   * Remove a part from inventory (soft delete by setting stock to 0)
+   * PATCH /repuestos/:id/toggle-activo
+   * Toggle active status of a part (for double-safety delete flow)
    */
   @ApiOperation({
-    summary: "Eliminar repuesto",
+    summary: "Activar/Desactivar repuesto",
     description:
-      "Desactiva un repuesto del catálogo estableciendo su stock en 0. Solo se permite si no está siendo utilizado en tareas.",
+      "Cambia el estado activo de un repuesto. Un repuesto debe ser desactivado antes de poder eliminarlo.",
   })
   @ApiParam({ name: "id", type: Number, description: "ID del repuesto" })
   @ApiResponse({
     status: 200,
-    description: "Repuesto desactivado exitosamente",
+    description: "Estado de repuesto cambiado",
+    type: Repuesto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: "Repuesto no encontrado",
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden cambiar estado de repuestos",
+  })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Patch(":id/toggle-activo")
+  async toggleActive(@Param("id", ParseIntPipe) id: number): Promise<Repuesto> {
+    return this.partsService.toggleActive(id);
+  }
+
+  /**
+   * DELETE /repuestos/:id
+   * Remove a part from inventory (soft delete)
+   * SECURITY: Part must be deactivated first
+   */
+  @ApiOperation({
+    summary: "Eliminar repuesto",
+    description:
+      "Elimina un repuesto del catálogo. El repuesto debe estar DESACTIVADO antes de poder eliminarlo (doble factor de seguridad).",
+  })
+  @ApiParam({ name: "id", type: Number, description: "ID del repuesto" })
+  @ApiResponse({
+    status: 200,
+    description: "Repuesto eliminado exitosamente",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "El repuesto debe ser desactivado antes de eliminarlo",
   })
   @ApiResponse({
     status: 404,
@@ -239,9 +273,9 @@ export class PartsController {
   @Roles(RolUsuario.Administrador)
   @HttpCode(HttpStatus.OK)
   @Delete(":id")
-  async remove(@Param("id", ParseIntPipe) id: number): Promise<Repuesto> {
-    // Soft delete by setting stock to 0
-    return this.partsService.update(id, { cantidad_stock: 0 });
+  async remove(@Param("id", ParseIntPipe) id: number): Promise<{ message: string }> {
+    await this.partsService.softDelete(id);
+    return { message: "Repuesto eliminado exitosamente" };
   }
 
   /**
@@ -251,25 +285,11 @@ export class PartsController {
   @ApiOperation({
     summary: "Verificar stock bajo ahora",
     description:
-      "Ejecuta manualmente la verificación de stock bajo y envía alerta por email si hay repuestos que requieren reabastecimiento. Útil para testing o revisión inmediata.",
+      "Ejecuta manualmente la verificación de stock bajo y envía alerta por email si hay repuestos que requieren reabastecimiento.",
   })
   @ApiResponse({
     status: 200,
     description: "Verificación completada",
-    schema: {
-      example: {
-        partsFound: 3,
-        alertSent: true,
-        parts: [
-          {
-            codigo: "F001",
-            nombre: "Filtro de Aceite",
-            cantidad_stock: 2,
-            stock_minimo: 10,
-          },
-        ],
-      },
-    },
   })
   @ApiForbiddenResponse({
     description: "Solo Admin y Jefe pueden verificar stock",
@@ -292,3 +312,4 @@ export class PartsController {
     return this.inventoryAlertsService.checkNow();
   }
 }
+

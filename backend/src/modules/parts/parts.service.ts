@@ -21,7 +21,7 @@ export class PartsService {
   constructor(
     @InjectRepository(Repuesto)
     private readonly repuestoRepository: Repository<Repuesto>,
-  ) {}
+  ) { }
 
   /**
    * Create new part
@@ -222,4 +222,46 @@ export class PartsService {
       alertSent: false, // Will be set to true by calling service after sending email
     };
   }
+
+  /**
+   * Toggle active status of a part
+   * Used to deactivate before deletion (double safety)
+   */
+  async toggleActive(id: number): Promise<Repuesto> {
+    const repuesto = await this.repuestoRepository.findOne({ where: { id } });
+    if (!repuesto) {
+      throw new NotFoundException("Repuesto no encontrado");
+    }
+
+    repuesto.activo = !repuesto.activo;
+    const saved = await this.repuestoRepository.save(repuesto);
+
+    this.logger.log(
+      `Part ${saved.codigo} ${saved.activo ? 'activated' : 'deactivated'}`,
+    );
+
+    return saved;
+  }
+
+  /**
+   * Soft delete a part
+   * SECURITY: Part must be deactivated before deletion
+   */
+  async softDelete(id: number): Promise<void> {
+    const repuesto = await this.repuestoRepository.findOne({ where: { id } });
+    if (!repuesto) {
+      throw new NotFoundException("Repuesto no encontrado");
+    }
+
+    // SECURITY: Require deactivation before deletion
+    if (repuesto.activo) {
+      throw new BadRequestException(
+        "El repuesto debe ser desactivado antes de eliminarlo. Primero desactive el repuesto.",
+      );
+    }
+
+    await this.repuestoRepository.softDelete(id);
+    this.logger.log(`Part soft deleted: ${repuesto.codigo}`);
+  }
 }
+

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SkeletonTable } from "@/components/ui/skeleton-table"
 import { Pagination } from "@/components/pagination"
 import { useDebounce } from "@/hooks/use-debounce"
-import { Plus, Search, Package, ArrowLeft, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Package, ArrowLeft, Edit, Trash2, Power, PowerOff } from "lucide-react"
 import { PartDialog } from "@/components/part-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
@@ -28,6 +28,7 @@ interface Part {
   stock_minimo: number
   proveedor?: string
   ubicacion_almacen?: string
+  activo: boolean
 }
 
 export default function PartsPage() {
@@ -110,9 +111,21 @@ export default function PartsPage() {
       toast.success("Repuesto eliminado exitosamente")
       await loadParts()
       setDeleteDialogOpen(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting part:", error)
-      toast.error("Error al eliminar el repuesto")
+      const message = error?.response?.data?.message || "Error al eliminar el repuesto"
+      toast.error(message)
+    }
+  }
+
+  const handleToggleActive = async (part: Part) => {
+    try {
+      await api.parts.toggleActive(part.id)
+      toast.success(part.activo ? "Repuesto desactivado" : "Repuesto activado")
+      await loadParts()
+    } catch (error) {
+      console.error("Error toggling part status:", error)
+      toast.error("Error al cambiar estado del repuesto")
     }
   }
 
@@ -273,12 +286,31 @@ export default function PartsPage() {
                         {!isMechanic && (
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(part)}>
+                              <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(part)} title="Editar">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(part)}>
-                                <Trash2 className="h-4 w-4" />
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleToggleActive(part)}
+                                title={part.activo ? "Desactivar" : "Activar"}
+                              >
+                                {part.activo ? (
+                                  <PowerOff className="h-4 w-4 text-orange-500" />
+                                ) : (
+                                  <Power className="h-4 w-4 text-green-500" />
+                                )}
                               </Button>
+                              {!part.activo && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => handleDelete(part)}
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         )}
