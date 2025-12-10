@@ -10,6 +10,16 @@ import { DetalleRepuesto } from "./entities/detalle-repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
 import { Repuesto } from "../parts/entities/repuesto.entity";
 import { RegisterUsageDto } from "./dto/register-usage.dto";
+import { InventoryAlertsService } from "../parts/inventory-alerts.service";
+
+// Type for part info used in low stock alerts
+interface PartStockInfo {
+  id: number;
+  codigo: string;
+  nombre: string;
+  cantidad_stock: number;
+  stock_minimo: number;
+}
 
 /**
  * Service for managing part usage details
@@ -25,7 +35,8 @@ export class PartDetailsService {
     private readonly tareaRepository: Repository<Tarea>,
     @InjectRepository(Repuesto)
     private readonly repuestoRepository: Repository<Repuesto>,
-  ) {}
+    private readonly inventoryAlertsService: InventoryAlertsService,
+  ) { }
 
   /**
    * Register part usage in a task
@@ -35,10 +46,12 @@ export class PartDetailsService {
    * 3. Stores historical price (precio_unitario_momento)
    * 4. Deducts stock
    * 5. Creates detail record
+   * 6. Checks if stock fell below minimum and sends alert
    * All operations wrapped in database transaction for data consistency
    */
   async registerUsage(dto: RegisterUsageDto): Promise<DetalleRepuesto> {
-    return await this.detalleRepuestoRepository.manager.transaction(
+    // Execute transaction and get both result and part info
+    const { savedDetalle, partInfo } = await this.detalleRepuestoRepository.manager.transaction(
       async (transactionalEntityManager) => {
         // Validate task exists
         const tarea = await transactionalEntityManager.findOne(Tarea, {
@@ -83,7 +96,7 @@ export class PartDetailsService {
         });
 
         // Save detail record
-        const savedDetalle = await transactionalEntityManager.save(
+        const result = await transactionalEntityManager.save(
           DetalleRepuesto,
           detalle,
         );
@@ -96,9 +109,32 @@ export class PartDetailsService {
           `Part usage registered: ${repuesto.codigo} x ${dto.cantidad_usada} for task ${tarea.id}. Price: $${precio_unitario_momento}`,
         );
 
-        return savedDetalle;
+        // Return both result and part info for low stock check
+        const partStockInfo: PartStockInfo = {
+          id: repuesto.id,
+          codigo: repuesto.codigo,
+          nombre: repuesto.nombre,
+          cantidad_stock: repuesto.cantidad_stock,
+          stock_minimo: repuesto.stock_minimo,
+        };
+
+        return { savedDetalle: result, partInfo: partStockInfo };
       },
     );
+
+    // After transaction commits, check if stock fell below minimum
+    if (partInfo.cantidad_stock <= partInfo.stock_minimo) {
+      this.logger.warn(
+        `Stock for ${partInfo.codigo} (${partInfo.cantidad_stock}) is at or below minimum (${partInfo.stock_minimo})`
+      );
+
+      // Send alert asynchronously (don't block the response)
+      this.inventoryAlertsService.notifyLowStockPart(partInfo).catch((error) => {
+        this.logger.error(`Failed to send low stock alert for ${partInfo.codigo}:`, error);
+      });
+    }
+
+    return savedDetalle;
   }
 
   /**
