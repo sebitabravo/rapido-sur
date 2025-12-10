@@ -209,4 +209,58 @@ export class PreventivePlansService {
       relations: ["vehiculo"],
     });
   }
+
+  /**
+   * Fix preventive plans with null proximo_kilometraje or proxima_fecha
+   * This is an admin utility to repair data inconsistencies
+   */
+  async fixNullNextMaintenanceValues(): Promise<{ fixed: number; errors: string[] }> {
+    this.logger.log('[FIX] Starting repair of preventive plans with null values...');
+
+    const planes = await this.planPreventivoRepository.find({
+      relations: ['vehiculo'],
+    });
+
+    let fixed = 0;
+    const errors: string[] = [];
+
+    for (const plan of planes) {
+      let needsUpdate = false;
+
+      try {
+        // Fix KM plans with null proximo_kilometraje
+        if (plan.tipo_intervalo === TipoIntervalo.KM && !plan.proximo_kilometraje) {
+          plan.proximo_kilometraje = plan.vehiculo.kilometraje_actual + plan.intervalo;
+          needsUpdate = true;
+          this.logger.log(
+            `[FIX] Plan ${plan.id} (${plan.vehiculo.patente}): Setting proximo_kilometraje to ${plan.proximo_kilometraje} km`
+          );
+        }
+
+        // Fix Time plans with null proxima_fecha
+        if (plan.tipo_intervalo === TipoIntervalo.Tiempo && !plan.proxima_fecha) {
+          const proximaFecha = new Date(plan.vehiculo.ultima_revision);
+          proximaFecha.setDate(proximaFecha.getDate() + plan.intervalo);
+          plan.proxima_fecha = proximaFecha;
+          needsUpdate = true;
+          this.logger.log(
+            `[FIX] Plan ${plan.id} (${plan.vehiculo.patente}): Setting proxima_fecha to ${plan.proxima_fecha.toISOString()}`
+          );
+        }
+
+        if (needsUpdate) {
+          await this.planPreventivoRepository.save(plan);
+          fixed++;
+        }
+      } catch (error) {
+        const errorMsg = `Error fixing plan ${plan.id} for vehicle ${plan.vehiculo.patente}: ${error.message}`;
+        this.logger.error(errorMsg);
+        errors.push(errorMsg);
+      }
+    }
+
+    this.logger.log(`[FIX] Completed: ${fixed} plans fixed, ${errors.length} errors`);
+
+    return { fixed, errors };
+  }
 }

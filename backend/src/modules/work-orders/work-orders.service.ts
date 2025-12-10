@@ -30,6 +30,7 @@ import { FilterOrdenTrabajoDto } from "./dto/filter-orden-trabajo.dto";
 import {
   EstadoOrdenTrabajo,
   TipoOrdenTrabajo,
+  PrioridadOrdenTrabajo,
   RolUsuario,
   EstadoVehiculo,
   TipoIntervalo,
@@ -72,7 +73,7 @@ export class WorkOrdersService {
     // Validate vehicle exists
     const vehiculo = await this.vehiculoRepo.findOne({
       where: { id: createDto.vehiculo_id },
-      relations: ['marca'],
+      // No relations needed - marca, modelo, patente are regular fields, not relations
     });
     if (!vehiculo) {
       throw new NotFoundException("Vehículo no encontrado");
@@ -96,9 +97,10 @@ export class WorkOrdersService {
     const orden = this.otRepo.create({
       numero_ot: numeroOt,
       tipo: createDto.tipo,
-      prioridad: createDto.prioridad,
+      prioridad: createDto.prioridad || PrioridadOrdenTrabajo.MEDIA,
       descripcion: createDto.descripcion,
       costo_estimado: createDto.costo_estimado,
+      costo_total: 0,
       vehiculo,
       ...(mecanico && { mecanico }),
       estado: mecanico ? EstadoOrdenTrabajo.Asignada : EstadoOrdenTrabajo.Pendiente,
@@ -552,7 +554,7 @@ export class WorkOrdersService {
         "vehiculo",
         "mecanico",
         "tareas",
-        "tareas.mecanico",
+        "tareas.mecanico_asignado",
         "tareas.detalles_repuestos",
         "tareas.detalles_repuestos.repuesto",
       ],

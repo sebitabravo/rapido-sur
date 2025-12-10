@@ -245,4 +245,36 @@ export class PreventivePlansController {
     }
     return plan;
   }
+
+  /**
+   * POST /planes-preventivos/fix-null-values
+   * Fix preventive plans with null proximo_kilometraje or proxima_fecha
+   * ADMIN ONLY - Repairs data inconsistencies
+   */
+  @ApiOperation({
+    summary: "Reparar planes preventivos con valores null",
+    description:
+      "Repara planes preventivos que tienen proximo_kilometraje o proxima_fecha como null. " +
+      "Calcula automáticamente los valores basándose en el kilometraje actual del vehículo o última revisión. " +
+      "Solo disponible para administradores.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Resultado de la reparación",
+    schema: {
+      example: {
+        fixed: 5,
+        errors: [],
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: "Solo administradores pueden ejecutar esta operación",
+  })
+  @Post("fix-null-values")
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador)
+  async fixNullValues(): Promise<{ fixed: number; errors: string[] }> {
+    return this.preventivePlansService.fixNullNextMaintenanceValues();
+  }
 }

@@ -72,6 +72,30 @@ export class PartsController {
   }
 
   /**
+   * GET /repuestos/stock-bajo
+   * Get parts with stock below minimum level
+   */
+  @ApiOperation({
+    summary: "Listar repuestos con stock bajo",
+    description:
+      "Obtiene lista de repuestos cuyo stock actual está por debajo del stock mínimo configurado. Útil para gestión de inventario.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Lista de repuestos con stock bajo",
+    isArray: true,
+  })
+  @ApiForbiddenResponse({
+    description: "Solo Admin y Jefe pueden consultar stock bajo",
+  })
+  @UseGuards(RolesGuard)
+  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
+  @Get("stock-bajo")
+  async getLowStock(): Promise<Repuesto[]> {
+    return this.partsService.findBelowMinimumStock();
+  }
+
+  /**
    * GET /repuestos/:id
    * Get a specific part by ID
    */
@@ -221,30 +245,6 @@ export class PartsController {
   }
 
   /**
-   * GET /repuestos/stock-bajo
-   * Get parts with stock below minimum level
-   */
-  @ApiOperation({
-    summary: "Listar repuestos con stock bajo",
-    description:
-      "Obtiene lista de repuestos cuyo stock actual está por debajo del stock mínimo configurado. Útil para gestión de inventario.",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Lista de repuestos con stock bajo",
-    isArray: true,
-  })
-  @ApiForbiddenResponse({
-    description: "Solo Admin y Jefe pueden consultar stock bajo",
-  })
-  @UseGuards(RolesGuard)
-  @Roles(RolUsuario.Administrador, RolUsuario.JefeMantenimiento)
-  @Get("stock-bajo")
-  async getLowStock(): Promise<Repuesto[]> {
-    return this.partsService.findBelowMinimumStock();
-  }
-
-  /**
    * POST /repuestos/verificar-stock-ahora
    * Manually trigger low stock check and send alert email
    */
@@ -281,6 +281,7 @@ export class PartsController {
   async checkLowStockNow(): Promise<{
     partsFound: number;
     alertSent: boolean;
+    emailsSent: number;
     parts: Array<{
       codigo: string;
       nombre: string;

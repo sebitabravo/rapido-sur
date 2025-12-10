@@ -205,6 +205,7 @@ export const api = {
     update: (id: number, data: any) => apiClient.patch(`/repuestos/${id}`, data),
     delete: (id: number) => apiClient.delete(`/repuestos/${id}`),
     updateStock: (id: number, cantidad: number) => apiClient.patch(`/repuestos/${id}/stock`, { cantidad }),
+    getLowStock: () => apiClient.get("/repuestos/stock-bajo"),
   },
 
   // Part Details (Detalles de Repuestos en Tareas)

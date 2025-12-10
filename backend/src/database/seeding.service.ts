@@ -255,17 +255,31 @@ export class SeedingService implements OnModuleInit {
 
       // Alternate between KM and Time intervals
       const useKm = vehicles.indexOf(vehicle) % 2 === 0;
+      const intervalo = useKm ? 10000 : 180;
 
-      const plan = this.planRepo.create({
+      const planData: any = {
         vehiculo: vehicle,
         tipo_mantenimiento: useKm ? 'Mantenimiento Preventivo por Kilometraje' : 'Mantenimiento Preventivo por Tiempo',
         tipo_intervalo: useKm ? TipoIntervalo.KM : TipoIntervalo.Tiempo,
-        intervalo: useKm ? 10000 : 180, // 10,000 km or 180 days (6 months)
-        descripcion: useKm 
+        intervalo: intervalo,
+        descripcion: useKm
           ? 'Mantenimiento preventivo cada 10,000 km: cambio de aceite, filtros, revisión de frenos'
           : 'Mantenimiento preventivo semestral: inspección general, cambio de fluidos, revisión eléctrica',
         activo: true,
-      });
+      };
+
+      // CRITICAL: Set proximo_kilometraje or proxima_fecha based on tipo_intervalo
+      if (useKm) {
+        // For KM plans, calculate next maintenance based on current mileage
+        planData.proximo_kilometraje = vehicle.kilometraje_actual + intervalo;
+      } else {
+        // For Time plans, calculate next maintenance based on ultima_revision
+        const proximaFecha = new Date(vehicle.ultima_revision);
+        proximaFecha.setDate(proximaFecha.getDate() + intervalo);
+        planData.proxima_fecha = proximaFecha;
+      }
+
+      const plan = this.planRepo.create(planData);
 
       await this.planRepo.save(plan);
       if (stats) stats.plans.new++;

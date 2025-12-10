@@ -653,4 +653,104 @@ export class MailService {
 
     this.logger.log(`Low stock alert sent to ${managerEmail} for ${lowStockParts.length} parts`);
   }
+
+  /**
+   * Send low stock alert to MULTIPLE managers
+   * @param lowStockParts Array of parts with low stock
+   * @param managerEmails Array of email addresses to send to
+   */
+  async sendLowStockAlertToMultiple(
+    lowStockParts: Array<{
+      codigo: string;
+      nombre: string;
+      cantidad_stock: number;
+      stock_minimo: number;
+    }>,
+    managerEmails: string[],
+  ): Promise<void> {
+    if (!managerEmails || managerEmails.length === 0) {
+      this.logger.error("No manager emails provided for low stock alert");
+      throw new Error("At least one manager email is required");
+    }
+
+    const partRows = lowStockParts
+      .map(
+        (part) => `
+        <tr>
+          <td style="padding: 12px; border: 1px solid #ddd;">${part.codigo}</td>
+          <td style="padding: 12px; border: 1px solid #ddd;">${part.nombre}</td>
+          <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${part.cantidad_stock}</td>
+          <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${part.stock_minimo}</td>
+          <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: ${part.cantidad_stock === 0 ? '#d32f2f' : '#ff9800'}; font-weight: bold;">
+            ${part.cantidad_stock === 0 ? 'Sin Stock' : 'Stock Bajo'}
+          </td>
+        </tr>
+      `,
+      )
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Alerta de Stock Bajo - Repuestos</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #ff9800;">⚠️ Alerta de Stock Bajo - Repuestos</h1>
+            <p>Los siguientes repuestos tienen stock bajo o agotado y requieren reabastecimiento:</p>
+
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <thead>
+                <tr style="background-color: #f5f5f5;">
+                  <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Código</th>
+                  <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Repuesto</th>
+                  <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Stock Actual</th>
+                  <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Stock Mínimo</th>
+                  <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${partRows}
+              </tbody>
+            </table>
+
+            <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ff9800; margin: 20px 0;">
+              <p style="margin: 0;"><strong>⚠️ Acción requerida:</strong> Es necesario realizar un pedido de reabastecimiento para estos repuestos.</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+              <a href="${this.configService.get<string>("FRONTEND_URL")}/parts"
+                 style="background-color: #ff9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Gestionar Inventario
+              </a>
+            </p>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">
+              Este es un mensaje automático del Sistema de Gestión de Mantenimiento - Rápido Sur<br>
+              Por favor no responder a este correo.
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Send email to each manager
+    const sendPromises = managerEmails.map(email =>
+      this.sendMailWithPreferences(
+        email,
+        "⚠️ Alerta de Stock Bajo - Repuestos - Rápido Sur",
+        html,
+        { isMaintenanceAlert: true }
+      )
+    );
+
+    await Promise.all(sendPromises);
+
+    this.logger.log(
+      `Low stock alert sent to ${managerEmails.length} managers (${managerEmails.join(', ')}) for ${lowStockParts.length} parts`
+    );
+  }
 }

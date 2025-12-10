@@ -40,4 +40,19 @@ export class UpdateRepuestoDto {
   @IsOptional()
   @IsString()
   descripcion?: string;
+
+  /**
+   * Part category
+   */
+  @IsOptional()
+  @IsString()
+  categoria?: string;
+
+  /**
+   * Minimum stock level for alerts
+   */
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: "El stock mínimo no puede ser negativo" })
+  stock_minimo?: number;
 }
