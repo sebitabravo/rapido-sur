@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
-import { AlertTriangle, ArrowLeft, X, CheckCircle, Bell, Eye } from "lucide-react"
+import { AlertTriangle, ArrowLeft, CheckCircle, Bell, Eye, Package } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
 import { AlertDetailDialog } from "@/components/alert-detail-dialog"
 
 interface Alert {
-  id: number
+  id: number | string
   tipo_alerta: string
   mensaje: string
   fecha_generacion: string
@@ -26,6 +26,13 @@ interface Alert {
     patente: string
     marca: string
     modelo: string
+  }
+  repuesto?: {
+    id: number
+    codigo: string
+    nombre: string
+    cantidad_stock: number
+    stock_minimo: number
   }
 }
 
@@ -54,8 +61,39 @@ export default function AlertsPage() {
   const loadAlerts = async () => {
     try {
       setLoading(true)
-      const response = await api.alerts.getAll()
-      let allAlerts = response.data || []
+
+      // Get maintenance alerts (kilometraje/fecha)
+      const maintenanceResponse = await api.alerts.getAll()
+      let maintenanceAlerts = maintenanceResponse.data || []
+
+      // Get low stock alerts
+      let lowStockAlerts: Alert[] = []
+      try {
+        const stockResponse = await api.parts.getLowStock()
+        const lowStockParts = stockResponse.data || []
+
+        // Transform low stock parts into Alert format
+        lowStockAlerts = lowStockParts.map((part: any) => ({
+          id: `stock-${part.id}`,
+          tipo_alerta: "Stock Bajo",
+          mensaje: `${part.nombre} - Stock: ${part.cantidad_stock} (Mínimo: ${part.stock_minimo})`,
+          fecha_generacion: new Date().toISOString(),
+          email_enviado: false,
+          estado: "Activa",
+          repuesto: {
+            id: part.id,
+            codigo: part.codigo,
+            nombre: part.nombre,
+            cantidad_stock: part.cantidad_stock,
+            stock_minimo: part.stock_minimo,
+          },
+        }))
+      } catch (error) {
+        console.error("Error loading low stock alerts:", error)
+      }
+
+      // Combine alerts
+      let allAlerts = [...maintenanceAlerts, ...lowStockAlerts]
 
       // Filter based on selected filter
       if (filter === "active") {
@@ -73,8 +111,20 @@ export default function AlertsPage() {
     }
   }
 
-  const handleViewDetails = (id: number) => {
-    setSelectedAlertId(id)
+  // Solo alertas de mantenimiento (no stock) pueden ver detalles
+  const handleViewDetails = (alert: Alert) => {
+    // Las alertas de stock tienen id de tipo string "stock-X", no se pueden abrir
+    if (typeof alert.id === "string" && alert.id.startsWith("stock-")) {
+      toast.info("Alerta de Stock", {
+        description: `${alert.repuesto?.nombre}: ${alert.repuesto?.cantidad_stock} unidades (mín: ${alert.repuesto?.stock_minimo})`,
+        action: {
+          label: "Ir a Repuestos",
+          onClick: () => router.push("/parts"),
+        },
+      })
+      return
+    }
+    setSelectedAlertId(alert.id as number)
     setDetailDialogOpen(true)
   }
 
@@ -83,23 +133,38 @@ export default function AlertsPage() {
   }
 
   const getAlertColor = (tipoAlerta: string) => {
-    return tipoAlerta === "Kilometraje" ? "text-destructive" : "text-orange-500"
+    switch (tipoAlerta) {
+      case "Kilometraje":
+        return "text-destructive"
+      case "Stock Bajo":
+        return "text-amber-500"
+      default:
+        return "text-orange-500"
+    }
   }
 
   const getAlertBadge = (tipoAlerta: string) => {
+    let variant: "destructive" | "default" | "secondary" = "default"
+    if (tipoAlerta === "Kilometraje") variant = "destructive"
+    if (tipoAlerta === "Stock Bajo") variant = "secondary"
+
     return (
-      <Badge variant={tipoAlerta === "Kilometraje" ? "destructive" : "default"}>
+      <Badge variant={variant}>
         {tipoAlerta}
       </Badge>
     )
   }
 
   const getAlertTypeIcon = (tipoAlerta: string) => {
+    if (tipoAlerta === "Stock Bajo") {
+      return <Package className="h-5 w-5" />
+    }
     return <AlertTriangle className="h-5 w-5" />
   }
 
   const kilometrajeAlerts = alerts.filter((a) => a.tipo_alerta === "Kilometraje")
   const fechaAlerts = alerts.filter((a) => a.tipo_alerta === "Fecha")
+  const stockAlerts = alerts.filter((a) => a.tipo_alerta === "Stock Bajo")
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,7 +195,7 @@ export default function AlertsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Total Alertas</CardTitle>
@@ -153,6 +218,14 @@ export default function AlertsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-500">{fechaAlerts.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-500">{stockAlerts.length}</div>
             </CardContent>
           </Card>
         </div>
@@ -207,11 +280,16 @@ export default function AlertsPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {getAlertBadge(alert.tipo_alerta)}
                         {alert.vehiculo && (
                           <Badge variant="secondary" className="text-xs">
                             {alert.vehiculo.patente}
+                          </Badge>
+                        )}
+                        {alert.repuesto && (
+                          <Badge variant="outline" className="text-xs">
+                            {alert.repuesto.codigo}
                           </Badge>
                         )}
                         {alert.estado === "Activa" && (
@@ -252,11 +330,11 @@ export default function AlertsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleViewDetails(alert.id)}
+                      onClick={() => handleViewDetails(alert)}
                       title="Ver detalles"
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Ver Detalles
+                      {typeof alert.id === "string" ? "Ver" : "Detalles"}
                     </Button>
                   </div>
                 ))}
@@ -280,7 +358,7 @@ export default function AlertsPage() {
             <CardDescription>Información sobre los diferentes tipos de alertas del sistema</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-start gap-3 p-3 border rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
                 <div>
@@ -297,6 +375,16 @@ export default function AlertsPage() {
                   <p className="font-medium text-sm">Alerta por Fecha</p>
                   <p className="text-xs text-muted-foreground">
                     Se activa cuando un vehículo está a 7 días de su próximo mantenimiento preventivo
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 border rounded-lg">
+                <Package className="h-5 w-5 text-amber-500 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Alerta de Stock Bajo</p>
+                  <p className="text-xs text-muted-foreground">
+                    Se muestra cuando un repuesto tiene menos unidades que su stock mínimo configurado
                   </p>
                 </div>
               </div>
