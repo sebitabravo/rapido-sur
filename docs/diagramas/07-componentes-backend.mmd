@@ -1,0 +1,66 @@
+%%{init: {'theme':'forest', 'themeVariables': { 'fontSize':'14px'}}}%%
+graph TB
+    subgraph AppModule["🏗️ APP MODULE (Raíz)"]
+        Common["📦 Common Module<br/>Guards, Pipes, Decorators"]
+        Auth["🔐 Auth Module<br/>Login, JWT, Strategies"]
+        Database["🗄️ Database Module<br/>TypeORM Config"]
+    end
+
+    subgraph CoreModules["⚙️ MÓDULOS DE NEGOCIO"]
+        Users["👥 Users Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- RBAC"]
+
+        Vehicles["🚗 Vehicles Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- CRUD + Km"]
+
+        WorkOrders["📋 Work Orders Module<br/>- Controller<br/>- Service<br/>- Entity<br/>✨ CORE del sistema"]
+
+        Tasks["✓ Tasks Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- Tareas de OT"]
+
+        Parts["🔧 Parts Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- Catálogo"]
+
+        PartDetails["📦 Part Details Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- Many-to-Many"]
+
+        Plans["📅 Preventive Plans Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- Config preventivo"]
+
+        Alerts["🔔 Alerts Module<br/>- Controller<br/>- Service<br/>- Entity<br/>- Cron Job 6AM"]
+
+        Reports["📊 Reports Module<br/>- Controller<br/>- Service<br/>- Generación reportes"]
+    end
+
+    AppModule --> CoreModules
+
+    WorkOrders --> Vehicles
+    WorkOrders --> Users
+    WorkOrders --> Tasks
+
+    Tasks --> Users
+    Tasks --> PartDetails
+
+    PartDetails --> Tasks
+    PartDetails --> Parts
+
+    Alerts --> Vehicles
+    Alerts --> Plans
+
+    Reports --> WorkOrders
+    Reports --> Vehicles
+    Reports --> Users
+
+    Plans --> Vehicles
+
+    Auth --> Users
+    Database --> Users
+    Database --> Vehicles
+    Database --> WorkOrders
+    Database --> Tasks
+    Database --> Parts
+    Database --> PartDetails
+    Database --> Plans
+    Database --> Alerts
+
+    classDef coreClass fill:#FF6B6B,stroke:#C44545,stroke-width:2px,color:#fff
+    classDef moduleClass fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    classDef dbClass fill:#FFB347,stroke:#CC8E39,stroke-width:2px,color:#fff
+
+    class AppModule,Common,Auth coreClass
+    class Users,Vehicles,WorkOrders,Tasks,Parts,PartDetails,Plans,Alerts,Reports moduleClass
+    class Database dbClass

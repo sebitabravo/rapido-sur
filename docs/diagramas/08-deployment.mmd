@@ -1,0 +1,77 @@
+%%{init: {'theme':'forest', 'themeVariables': { 'fontSize':'14px'}}}%%
+graph TB
+    subgraph Internet["🌐 INTERNET"]
+        Users["👥 Usuarios<br/>navegadores web"]
+        GitHub["💻 GitHub<br/>Repositorio"]
+        Gmail["📧 Gmail SMTP"]
+    end
+
+    subgraph VPS["🖥️ HOSTINGER VPS - Ubuntu 22.04<br/>4 vCPUs | 16GB RAM | 200GB SSD"]
+
+        subgraph Dokploy["⚙️ DOKPLOY"]
+            AutoDeploy["🔄 Auto-Deploy"]
+            SSL["🔒 SSL Manager<br/>Let's Encrypt"]
+            Monitoring["📊 Monitoring & Logs"]
+        end
+
+        subgraph Firewall["🔥 UFW FIREWALL"]
+            Port22["✅ 22 SSH"]
+            Port80["✅ 80 HTTP → 443"]
+            Port443["✅ 443 HTTPS"]
+            Port5432["❌ 5432 PostgreSQL<br/>(bloqueado externamente)"]
+        end
+
+        subgraph Docker["🐳 DOCKER COMPOSE"]
+            subgraph Frontend["📱 CONTENEDOR FRONTEND"]
+                NextBuild["Next.js 15 Build<br/>(Static Assets)"]
+                Nginx["Nginx Server<br/>Puerto: 80"]
+            end
+
+            subgraph Backend["⚙️ CONTENEDOR BACKEND"]
+                NestJS["NestJS 10<br/>Node.js 20 LTS<br/>Puerto: 3000"]
+                Cron["Cron Jobs<br/>Alertas 6AM"]
+            end
+
+            subgraph Database["🗄️ CONTENEDOR DATABASE"]
+                PostgreSQL["PostgreSQL 15<br/>Puerto: 5432<br/>(solo red interna)"]
+            end
+
+            subgraph Volumes["💾 DOCKER VOLUMES"]
+                PGData["postgres-data<br/>(persistente)"]
+                Backups["backups<br/>(diarios 2AM)"]
+            end
+        end
+
+        subgraph Network["🔌 DOCKER NETWORK"]
+            Bridge["rapido-sur-network<br/>(bridge)"]
+        end
+    end
+
+    Users -->|HTTPS:443| Port443
+    Port443 --> Nginx
+    Nginx -->|Proxy /api| NestJS
+    NestJS -->|PostgreSQL:5432| PostgreSQL
+    PostgreSQL -.->|Persistencia| PGData
+    NestJS -.->|Backups Diarios| Backups
+    NestJS -->|SMTP:587| Gmail
+    Gmail -.->|Alertas Email| Users
+
+    GitHub -->|Webhook Push| Dokploy
+    Dokploy -.->|Gestiona| Docker
+    SSL -.->|Cert Auto-Renew| Nginx
+
+    Frontend -.-> Bridge
+    Backend -.-> Bridge
+    Database -.-> Bridge
+
+    classDef internetClass fill:#9B59B6,stroke:#6F3D82,stroke-width:2px,color:#fff
+    classDef securityClass fill:#E74C3C,stroke:#C0392B,stroke-width:2px,color:#fff
+    classDef containerClass fill:#3498DB,stroke:#2C3E50,stroke-width:2px,color:#fff
+    classDef storageClass fill:#F39C12,stroke:#D68910,stroke-width:2px,color:#fff
+    classDef networkClass fill:#1ABC9C,stroke:#16A085,stroke-width:2px,color:#fff
+
+    class Users,GitHub,Gmail internetClass
+    class Firewall,SSL,Dokploy securityClass
+    class Frontend,Backend,Database containerClass
+    class Volumes,PGData,Backups storageClass
+    class Network,Bridge networkClass

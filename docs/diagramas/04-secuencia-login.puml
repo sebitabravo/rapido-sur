@@ -1,0 +1,62 @@
+@startuml
+!theme cerulean-outline
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+title Secuencia: Login de Usuario
+
+actor Usuario as User #4A90E2
+participant "Frontend\n(React)" as Frontend #50C878
+participant "Backend\n(NestJS)" as Backend #FF6B6B
+database "PostgreSQL" as DB #FFB347
+
+autonumber
+
+User -> Frontend: Ingresa email y contraseña
+activate Frontend
+
+User -> Frontend: Click "Iniciar Sesión"
+
+Frontend -> Backend: POST /api/auth/login\n{email, password}
+activate Backend
+
+Backend -> DB: SELECT * FROM usuarios\nWHERE email = ?
+activate DB
+DB --> Backend: Usuario encontrado
+deactivate DB
+
+Backend -> Backend: bcrypt.compare(\npassword,\npassword_hash)
+note right: Verifica contraseña\ncon hash bcrypt\ncost factor 12
+
+alt Password válido
+    Backend -> Backend: Generar JWT\npayload: {id, email, rol}
+    note right: Token expira\nen 24 horas
+
+    Backend --> Frontend: 200 OK\n{access_token, user}
+    deactivate Backend
+
+    Frontend -> Frontend: Guardar token en\nlocalStorage
+    Frontend -> Frontend: Actualizar AuthContext\n{user, token, isAuth: true}
+
+    Frontend --> User: Redirigir a Dashboard\nsegún rol
+    deactivate Frontend
+
+else Password inválido
+    Backend --> Frontend: 401 Unauthorized\n{message: "Credenciales inválidas"}
+    deactivate Backend
+
+    Frontend --> User: Mostrar error:\n"Email o contraseña incorrectos"
+    deactivate Frontend
+end
+
+note over User, DB
+  **Seguridad Implementada:**
+  • Contraseñas hasheadas con bcrypt
+  • JWT con expiración de 24h
+  • HTTPS en producción
+  • Bloqueo tras 5 intentos fallidos
+end note
+
+@enduml

@@ -1,0 +1,142 @@
+@startuml
+!theme cerulean-outline
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+title Casos de Uso - Sistema Rápido Sur
+
+left to right direction
+
+actor "Administrador" as Admin #FF6B6B
+actor "Jefe de\nMantenimiento" as Jefe #4A90E2
+actor "Mecánico" as Meca #50C878
+
+rectangle "Sistema de Gestión de Mantenimiento Vehicular" {
+
+  package "Gestión de Usuarios" #FFEBEE {
+    usecase UC1 as "Crear Usuario"
+    usecase UC2 as "Editar Usuario"
+    usecase UC3 as "Desactivar Usuario"
+  }
+
+  package "Gestión de Vehículos" #E8F5E9 {
+    usecase UC4 as "Registrar Vehículo"
+    usecase UC5 as "Actualizar Kilometraje"
+    usecase UC6 as "Configurar Plan\nPreventivo"
+    usecase UC7 as "Consultar Historial\nde Vehículo"
+  }
+
+  package "Gestión de Órdenes de Trabajo" #E3F2FD {
+    usecase UC8 as "Crear Orden\nde Trabajo"
+    usecase UC9 as "Asignar Mecánico\na OT"
+    usecase UC10 as "Iniciar Trabajo"
+    usecase UC11 as "Registrar Tareas"
+    usecase UC12 as "Registrar Repuestos\nUsados"
+    usecase UC13 as "Marcar Tareas\nCompletadas"
+    usecase UC14 as "Notificar\nFinalización"
+    usecase UC15 as "Cerrar Orden\nde Trabajo"
+  }
+
+  package "Sistema de Alertas" #FFF3E0 {
+    usecase UC16 as "Revisar Alertas\nPreventivas"
+    usecase UC17 as "Crear OT desde\nAlerta"
+  }
+
+  package "Gestión de Repuestos" #F3E5F5 {
+    usecase UC18 as "Agregar Repuesto\nal Catálogo"
+    usecase UC19 as "Reponer Stock"
+  }
+
+  package "Reportes" #FCE4EC {
+    usecase UC20 as "Generar Reporte\nde Costos"
+    usecase UC21 as "Generar Reporte\nde Disponibilidad"
+    usecase UC22 as "Exportar a CSV"
+  }
+
+  package "Funciones Comunes" #ECEFF1 {
+    usecase UC23 as "Iniciar Sesión"
+    usecase UC24 as "Cerrar Sesión"
+    usecase UC25 as "Cambiar Contraseña"
+  }
+}
+
+' Relaciones Administrador
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+
+' Relaciones Jefe de Mantenimiento
+Jefe --> UC4
+Jefe --> UC5
+Jefe --> UC6
+Jefe --> UC7
+Jefe --> UC8
+Jefe --> UC9
+Jefe --> UC15
+Jefe --> UC16
+Jefe --> UC17
+Jefe --> UC20
+Jefe --> UC21
+
+' Relaciones Mecánico
+Meca --> UC7
+Meca --> UC10
+Meca --> UC11
+Meca --> UC12
+Meca --> UC13
+Meca --> UC14
+
+' Funciones comunes (todos)
+Admin --> UC23
+Admin --> UC24
+Admin --> UC25
+Jefe --> UC23
+Jefe --> UC24
+Jefe --> UC25
+Meca --> UC23
+Meca --> UC24
+Meca --> UC25
+
+' Relaciones entre casos de uso
+UC8 ..> UC9 : <<include>>
+UC9 ..> UC10 : <<precede>>
+UC11 ..> UC12 : <<include>>
+UC14 ..> UC15 : <<precede>>
+UC17 ..> UC8 : <<invoke>>
+
+note right of UC8
+  Puede ser creada desde
+  una alerta preventiva
+  o manualmente
+end note
+
+note right of UC15
+  Solo puede cerrarse si
+  todas las tareas están
+  completadas
+end note
+
+note bottom of Admin
+  Acceso completo
+  al sistema
+end note
+
+note bottom of Jefe
+  Gestiona flujo de
+  mantenimiento
+end note
+
+note bottom of Meca
+  Ejecuta trabajos
+  asignados
+end note
+
+@enduml

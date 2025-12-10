@@ -1,0 +1,54 @@
+%%{init: {'theme':'forest', 'themeVariables': { 'fontSize':'16px'}}}%%
+graph TB
+    subgraph Internet["🌐 INTERNET"]
+        Users["👥 Usuarios<br/>Admin, Jefes, Mecánicos"]
+    end
+
+    subgraph VPS["🖥️ HOSTINGER VPS<br/>(Ubuntu 22.04 LTS)"]
+        subgraph Dokploy["⚙️ DOKPLOY"]
+            AutoDeploy["Auto-deploy desde GitHub"]
+            SSL["SSL Let's Encrypt"]
+            Logs["Logs Centralizados"]
+        end
+
+        subgraph Docker["🐳 DOCKER COMPOSE"]
+            Frontend["📱 FRONTEND<br/>Next.js 15 + React 18<br/>Nginx<br/>Puerto: 80/443"]
+            Backend["⚙️ BACKEND<br/>NestJS 10 + Node.js 20<br/>TypeScript 5<br/>Puerto: 3000"]
+            Database["🗄️ DATABASE<br/>PostgreSQL 15<br/>TypeORM<br/>Puerto: 5432"]
+        end
+
+        subgraph Volumes["💾 VOLUMES"]
+            PostgresData["postgres-data"]
+            Backups["backups"]
+        end
+
+        subgraph Network["🔌 NETWORK"]
+            BridgeNet["rapido-sur-network<br/>(bridge)"]
+        end
+    end
+
+    subgraph External["🌍 SERVICIOS EXTERNOS"]
+        Gmail["📧 Gmail SMTP<br/>Alertas Automáticas"]
+        GitHub["💻 GitHub<br/>Repositorio"]
+    end
+
+    Users -->|HTTPS:443| Frontend
+    Frontend -->|HTTP:3000| Backend
+    Backend -->|PostgreSQL:5432| Database
+    Database -.->|Persistencia| PostgresData
+    Backend -.->|Backups Diarios| Backups
+    Backend -->|SMTP:587| Gmail
+    GitHub -->|Webhook| Dokploy
+    Dokploy -.->|Gestiona| Docker
+
+    classDef userClass fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    classDef frontendClass fill:#50C878,stroke:#2E7D4E,stroke-width:2px,color:#fff
+    classDef backendClass fill:#FF6B6B,stroke:#C44545,stroke-width:2px,color:#fff
+    classDef dbClass fill:#FFB347,stroke:#CC8E39,stroke-width:2px,color:#fff
+    classDef externalClass fill:#9B59B6,stroke:#6F3D82,stroke-width:2px,color:#fff
+
+    class Users userClass
+    class Frontend frontendClass
+    class Backend backendClass
+    class Database dbClass
+    class Gmail,GitHub externalClass

@@ -1,0 +1,228 @@
+@startuml
+!theme cerulean-outline
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam shadowing false
+
+title Secuencia: Crear y Cerrar Orden de Trabajo
+
+actor "Jefe\nMantenimiento" as Jefe #4A90E2
+participant "Frontend" as FE #50C878
+participant "Backend\nNestJS" as BE #FF6B6B
+database "PostgreSQL" as DB #FFB347
+actor "Mecánico" as Meca #87CEEB
+participant "Alertas\nService" as Alerts #FF9800
+
+== FASE 1: Creación de OT ==
+
+Jefe -> FE: Crear nueva OT\n(desde alerta o manual)
+activate FE
+
+FE -> BE: POST /api/ordenes\n{vehiculo_id, tipo, descripcion}
+activate BE
+
+BE -> DB: INSERT INTO ordenes_trabajo
+activate DB
+DB --> BE: OT creada (ID: 42)
+deactivate DB
+
+BE -> BE: Generar numero_ot\n"OT-2025-00042"
+BE -> DB: UPDATE numero_ot
+activate DB
+DB --> BE: OK
+deactivate DB
+
+BE --> FE: 200 OK {OT}
+deactivate BE
+
+FE --> Jefe: OT creada exitosamente
+deactivate FE
+
+== FASE 2: Asignación ==
+
+Jefe -> FE: Asignar mecánico
+activate FE
+
+FE -> BE: PUT /api/ordenes/42/asignar\n{mecanico_id: 5}
+activate BE
+
+BE -> DB: UPDATE ordenes_trabajo\nSET mecanico_id=5,\nestado='Asignada'
+activate DB
+DB --> BE: OK
+deactivate DB
+
+BE -> Meca: Notificar asignación\n(email/sistema)
+activate Meca
+Meca --> BE: ACK
+deactivate Meca
+
+BE --> FE: 200 OK
+deactivate BE
+
+FE --> Jefe: Mecánico asignado
+deactivate FE
+
+== FASE 3: Ejecución por Mecánico ==
+
+Meca -> FE: Ver OT asignada
+activate FE
+
+FE -> BE: GET /api/ordenes/42
+activate BE
+BE -> DB: SELECT con JOINs
+activate DB
+DB --> BE: OT con detalles
+deactivate DB
+BE --> FE: {OT}
+deactivate BE
+FE --> Meca: Mostrar OT
+deactivate FE
+
+Meca -> FE: Iniciar trabajo
+activate FE
+FE -> BE: PUT /api/ordenes/42/iniciar
+activate BE
+BE -> DB: UPDATE estado='EnProgreso',\nfecha_inicio=NOW()
+activate DB
+DB --> BE: OK
+deactivate DB
+BE --> FE: 200 OK
+deactivate BE
+deactivate FE
+
+Meca -> FE: Registrar tareas
+activate FE
+FE -> BE: POST /api/tareas\n{orden_id: 42, descripcion, horas}
+activate BE
+BE -> DB: INSERT INTO tareas
+activate DB
+DB --> BE: Tarea creada
+deactivate DB
+BE --> FE: 201 Created
+deactivate BE
+deactivate FE
+
+Meca -> FE: Registrar repuestos usados
+activate FE
+FE -> BE: POST /api/detalles-repuestos\n{tarea_id, repuesto_id, cantidad}
+activate BE
+
+BE -> DB: SELECT stock FROM repuestos
+activate DB
+DB --> BE: stock: 15
+deactivate DB
+
+alt Stock suficiente
+    BE -> DB: UPDATE repuestos\nSET stock = stock - cantidad
+    activate DB
+    DB --> BE: OK
+    deactivate DB
+
+    BE -> DB: INSERT INTO detalles_repuestos
+    activate DB
+    DB --> BE: OK
+    deactivate DB
+
+    BE --> FE: 201 Created
+    deactivate BE
+else Stock insuficiente
+    BE --> FE: 400 Bad Request\n"Stock insuficiente"
+    deactivate BE
+end
+
+deactivate FE
+
+Meca -> FE: Marcar tareas completadas
+activate FE
+FE -> BE: PATCH /api/tareas/:id\n{completada: true}
+activate BE
+BE -> DB: UPDATE tareas
+activate DB
+DB --> BE: OK
+deactivate DB
+BE --> FE: 200 OK
+deactivate BE
+deactivate FE
+
+Meca -> FE: Notificar finalización
+activate FE
+FE -> BE: POST /api/ordenes/42/notificar
+activate BE
+BE -> Jefe: Notificar al jefe\n(email/sistema)
+activate Jefe
+Jefe --> BE: ACK
+deactivate Jefe
+BE --> FE: 200 OK
+deactivate BE
+deactivate FE
+
+== FASE 4: Cierre por Jefe ==
+
+Jefe -> FE: Revisar OT terminada
+activate FE
+FE -> BE: GET /api/ordenes/42
+activate BE
+BE -> DB: SELECT con todas las tareas\ny repuestos
+activate DB
+DB --> BE: OT completa
+deactivate DB
+BE --> FE: {OT con tareas y costos}
+deactivate BE
+FE --> Jefe: Mostrar detalle completo
+deactivate FE
+
+Jefe -> FE: Cerrar OT
+activate FE
+FE -> BE: PUT /api/ordenes/42/cerrar
+activate BE
+
+BE -> BE: Validar todas\ntareas completadas
+
+alt Todas las tareas OK
+    BE -> BE: Calcular costo_total\n(repuestos + mano de obra)
+
+    BE -> DB: UPDATE ordenes_trabajo\nSET estado='Finalizada',\nfecha_cierre=NOW(),\ncosto_total=X
+    activate DB
+    DB --> BE: OK
+    deactivate DB
+
+    BE -> DB: UPDATE vehiculos\nSET ultima_revision=NOW()
+    activate DB
+    DB --> BE: OK
+    deactivate DB
+
+    alt Tipo = Preventivo
+        BE -> Alerts: Recalcular próxima alerta
+        activate Alerts
+        Alerts -> DB: UPDATE plan_preventivo\nSET proximo_km/fecha
+        activate DB
+        DB --> Alerts: OK
+        deactivate DB
+        Alerts --> BE: Actualizado
+        deactivate Alerts
+    end
+
+    BE --> FE: 200 OK {OT cerrada}
+    deactivate BE
+
+    FE --> Jefe: OT cerrada exitosamente
+    deactivate FE
+
+else Tareas pendientes
+    BE --> FE: 400 Bad Request\n"Hay tareas sin completar"
+    deactivate BE
+
+    FE --> Jefe: Error: completar\ntodas las tareas
+    deactivate FE
+end
+
+note over Jefe, Alerts
+  **Resultado Final:**
+  • OT en estado Finalizada
+  • Vehículo actualizado
+  • Plan preventivo recalculado
+  • Costo total calculado
+  • Historial completo registrado
+end note
+
+@enduml

@@ -1,0 +1,290 @@
+// Database: rapido_sur_db
+// DBMS: PostgreSQL 15
+// Diagrama ER - Sistema de Gestión de Mantenimiento Vehicular
+// Rápido Sur
+
+Project RapidoSur {
+  database_type: 'PostgreSQL'
+  Note: 'Sistema de Gestión de Mantenimiento Vehicular para Rápido Sur'
+}
+
+// ============================================
+// TABLA: USUARIOS
+// ============================================
+Table usuarios {
+  id int [pk, increment, note: 'ID único del usuario']
+  nombre_completo varchar(100) [not null]
+  email varchar(100) [unique, not null, note: 'Email para login']
+  password_hash varchar(255) [not null, note: 'Hash bcrypt cost 12']
+  rol rol_usuario [not null, note: 'Administrador|JefeMantenimiento|Mecanico']
+  activo boolean [default: true]
+  avatar varchar(255) [default: 'default']
+  notif_email boolean [default: true]
+  notif_mantenimiento boolean [default: true]
+  notif_reportes_semanales boolean [default: false]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null, note: 'Soft delete']
+
+  indexes {
+    email [name: 'idx_usuarios_email']
+    rol [name: 'idx_usuarios_rol']
+    activo [name: 'idx_usuarios_activo']
+  }
+
+  Note: 'Usuarios del sistema con RBAC (Role-Based Access Control)'
+}
+
+// ============================================
+// TABLA: VEHÍCULOS
+// ============================================
+Table vehiculos {
+  id int [pk, increment]
+  patente varchar(10) [unique, not null, note: 'Formato chileno ABCD12']
+  marca varchar(50) [not null]
+  modelo varchar(50) [not null]
+  anno int [not null, note: '1900 a año actual + 1']
+  kilometraje_actual int [default: 0, note: 'Odómetro actual']
+  estado estado_vehiculo [default: 'Activo', note: 'Activo|EnMantenimiento|Inactivo|DeBaja']
+  ultima_revision date [null, note: 'Última fecha de mantenimiento']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    patente [name: 'idx_vehiculos_patente']
+    estado [name: 'idx_vehiculos_estado']
+    ultima_revision [name: 'idx_vehiculos_ultima_revision']
+  }
+
+  Note: 'Flota de 45 vehículos de Rápido Sur'
+}
+
+// ============================================
+// TABLA: PLANES PREVENTIVOS
+// ============================================
+Table planes_preventivos {
+  id int [pk, increment]
+  vehiculo_id int [unique, not null, ref: > vehiculos.id, note: 'Relación 1:1 con vehículo']
+  tipo_mantenimiento varchar(100) [not null]
+  tipo_intervalo tipo_intervalo [not null, note: 'KM|TIEMPO']
+  intervalo int [not null, note: 'Valor del intervalo (km o días)']
+  descripcion text [not null]
+  proximo_kilometraje int [null, note: 'Solo si tipo=KM']
+  proxima_fecha date [null, note: 'Solo si tipo=TIEMPO']
+  activo boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    vehiculo_id [name: 'idx_planes_vehiculo']
+    activo [name: 'idx_planes_activo']
+    proximo_kilometraje [name: 'idx_planes_proximo_km']
+    proxima_fecha [name: 'idx_planes_proxima_fecha']
+  }
+
+  Note: 'Plan de mantenimiento preventivo por vehículo'
+}
+
+// ============================================
+// TABLA: ÓRDENES DE TRABAJO
+// ============================================
+Table ordenes_trabajo {
+  id int [pk, increment]
+  numero_ot varchar(20) [unique, not null, note: 'Formato: OT-YYYY-NNNNN']
+  vehiculo_id int [not null, ref: > vehiculos.id]
+  mecanico_id int [null, ref: > usuarios.id]
+  tipo tipo_orden_trabajo [not null, note: 'Preventivo|Correctivo']
+  estado estado_orden_trabajo [default: 'Pendiente', note: 'Pendiente→Asignada→EnProgreso→Finalizada']
+  prioridad prioridad_orden_trabajo [default: 'MEDIA', note: 'BAJA|MEDIA|ALTA|CRITICA']
+  descripcion text [not null]
+  observaciones text [null]
+  fecha_creacion timestamp [default: `now()`]
+  fecha_inicio timestamp [null]
+  fecha_cierre timestamp [null]
+  costo_estimado decimal(10,2) [null]
+  costo_real decimal(10,2) [null]
+  costo_total decimal(10,2) [default: 0, note: 'Suma de repuestos + mano de obra']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    numero_ot [name: 'idx_ot_numero']
+    vehiculo_id [name: 'idx_ot_vehiculo']
+    mecanico_id [name: 'idx_ot_mecanico']
+    estado [name: 'idx_ot_estado']
+    tipo [name: 'idx_ot_tipo']
+    fecha_creacion [name: 'idx_ot_fecha_creacion']
+    (vehiculo_id, fecha_creacion) [name: 'idx_ot_vehiculo_fecha']
+  }
+
+  Note: 'Core del sistema - Órdenes de trabajo'
+}
+
+// ============================================
+// TABLA: TAREAS
+// ============================================
+Table tareas {
+  id int [pk, increment]
+  orden_trabajo_id int [not null, ref: > ordenes_trabajo.id]
+  mecanico_id int [null, ref: > usuarios.id]
+  descripcion text [not null]
+  observaciones text [null]
+  completada boolean [default: false]
+  fecha_vencimiento date [null]
+  horas_trabajadas decimal(5,2) [null, note: 'Para cálculo de mano de obra']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    orden_trabajo_id [name: 'idx_tareas_ot']
+    mecanico_id [name: 'idx_tareas_mecanico']
+    completada [name: 'idx_tareas_completada']
+  }
+
+  Note: 'Tareas específicas dentro de una OT'
+}
+
+// ============================================
+// TABLA: REPUESTOS
+// ============================================
+Table repuestos {
+  id int [pk, increment]
+  nombre varchar(100) [not null]
+  codigo varchar(50) [unique, not null, note: 'SKU único']
+  descripcion text [null]
+  categoria varchar(50) [null]
+  precio_unitario decimal(10,2) [not null, note: 'Precio actual']
+  cantidad_stock int [default: 0, note: 'Stock disponible (no negativo)']
+  stock_minimo int [default: 0, note: 'Alerta de reposición']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    codigo [name: 'idx_repuestos_codigo']
+    nombre [name: 'idx_repuestos_nombre']
+    cantidad_stock [name: 'idx_repuestos_stock']
+  }
+
+  Note: 'Catálogo de repuestos e inventario'
+}
+
+// ============================================
+// TABLA: DETALLES REPUESTOS (Many-to-Many)
+// ============================================
+Table detalles_repuestos {
+  id int [pk, increment]
+  tarea_id int [not null, ref: > tareas.id]
+  repuesto_id int [not null, ref: > repuestos.id]
+  cantidad_usada int [not null, note: 'Cantidad utilizada en esta tarea']
+  precio_unitario_momento decimal(10,2) [not null, note: 'Precio histórico para cálculos precisos']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    tarea_id [name: 'idx_detalles_tarea']
+    repuesto_id [name: 'idx_detalles_repuesto']
+  }
+
+  Note: 'Relación many-to-many: Tareas ↔ Repuestos'
+}
+
+// ============================================
+// TABLA: ALERTAS
+// ============================================
+Table alertas {
+  id int [pk, increment]
+  vehiculo_id int [not null, ref: > vehiculos.id]
+  tipo tipo_alerta [not null, note: 'POR_KM|POR_TIEMPO|STOCK_BAJO']
+  estado estado_alerta [default: 'Pendiente', note: 'Pendiente|Resuelta|Ignorada']
+  mensaje text [not null]
+  detalles jsonb [null, note: 'JSON con info adicional']
+  fecha_generacion timestamp [default: `now()`]
+  fecha_resolucion timestamp [null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    vehiculo_id [name: 'idx_alertas_vehiculo']
+    estado [name: 'idx_alertas_estado']
+    tipo [name: 'idx_alertas_tipo']
+    fecha_generacion [name: 'idx_alertas_fecha_generacion']
+  }
+
+  Note: 'Alertas de mantenimiento preventivo generadas por cron job'
+}
+
+// ============================================
+// TABLA: HISTORIAL DE REPORTES
+// ============================================
+Table report_history {
+  id int [pk, increment]
+  usuario_id int [not null, ref: > usuarios.id]
+  tipo_reporte varchar(50) [not null, note: 'costos|disponibilidad|tiempos']
+  parametros jsonb [null, note: 'JSON con filtros aplicados']
+  resultado jsonb [null, note: 'JSON con resultados']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    usuario_id [name: 'idx_reports_usuario']
+    tipo_reporte [name: 'idx_reports_tipo']
+    created_at [name: 'idx_reports_fecha']
+  }
+
+  Note: 'Historial de reportes generados'
+}
+
+// ============================================
+// ENUMS
+// ============================================
+Enum rol_usuario {
+  Administrador
+  JefeMantenimiento
+  Mecanico
+}
+
+Enum estado_vehiculo {
+  Activo
+  EnMantenimiento
+  Inactivo
+  DeBaja
+}
+
+Enum tipo_orden_trabajo {
+  Preventivo
+  Correctivo
+}
+
+Enum estado_orden_trabajo {
+  Pendiente
+  Asignada
+  EnProgreso
+  Finalizada
+  Cancelada
+}
+
+Enum prioridad_orden_trabajo {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+Enum tipo_intervalo {
+  KM
+  TIEMPO
+}
+
+Enum tipo_alerta {
+  POR_KM
+  POR_TIEMPO
+  STOCK_BAJO
+}
+
+Enum estado_alerta {
+  Pendiente
+  Resuelta
+  Ignorada
+}

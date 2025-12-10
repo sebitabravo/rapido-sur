@@ -1,0 +1,43 @@
+%%{init: {'theme':'forest', 'themeVariables': { 'fontSize':'14px'}}}%%
+stateDiagram-v2
+    [*] --> Pendiente : Jefe crea OT
+
+    Pendiente --> Asignada : asignar(mecánico)
+    Pendiente --> Cancelada : cancelar()
+
+    Asignada --> EnProgreso : mecánico.iniciar()
+    Asignada --> Pendiente : reasignar()
+    Asignada --> Cancelada : cancelar()
+
+    EnProgreso --> Finalizada : jefe.cerrar()\n[todas tareas completadas]
+
+    Finalizada --> [*]
+    Cancelada --> [*]
+
+    note right of Pendiente
+        Estado inicial
+        Esperando asignación
+    end note
+
+    note right of Asignada
+        Mecánico asignado
+        Pendiente de inicio
+    end note
+
+    note right of EnProgreso
+        Mecánico trabajando
+        Registrando tareas
+        y repuestos
+    end note
+
+    note right of Finalizada
+        ✅ Trabajo completado
+        ✅ Vehículo actualizado
+        ✅ Costo calculado
+        ✅ Plan preventivo recalculado
+    end note
+
+    note right of Cancelada
+        OT cancelada
+        (solo desde Pendiente o Asignada)
+    end note
