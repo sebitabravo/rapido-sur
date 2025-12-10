@@ -11,13 +11,13 @@ import { Tarea } from '../modules/tasks/entities/tarea.entity';
 import { Repuesto } from '../modules/parts/entities/repuesto.entity';
 import { DetalleRepuesto } from '../modules/part-details/entities/detalle-repuesto.entity';
 import { Alerta } from '../modules/alerts/entities/alerta.entity';
-import { 
-  RolUsuario, 
-  EstadoVehiculo, 
-  TipoIntervalo, 
-  TipoOrdenTrabajo, 
+import {
+  RolUsuario,
+  EstadoVehiculo,
+  TipoIntervalo,
+  TipoOrdenTrabajo,
   EstadoOrdenTrabajo,
-  TipoAlerta 
+  TipoAlerta
 } from '../common/enums';
 
 /**
@@ -48,7 +48,7 @@ export class SeedingService implements OnModuleInit {
     @InjectRepository(Alerta)
     private readonly alertaRepo: Repository<Alerta>,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     const enableSeeding = this.configService.get<string>('ENABLE_SEEDING');
@@ -75,22 +75,22 @@ export class SeedingService implements OnModuleInit {
 
       this.logger.log('👥 Seeding users...');
       const users = await this.seedUsers(stats);
-      
+
       this.logger.log('🚗 Seeding vehicles...');
       const vehicles = await this.seedVehicles(stats);
-      
+
       this.logger.log('📋 Seeding preventive plans...');
       await this.seedPreventivePlans(vehicles, stats);
-      
+
       this.logger.log('🔧 Seeding parts catalog...');
       const parts = await this.seedParts(stats);
-      
+
       this.logger.log('📝 Seeding work orders...');
       const orders = await this.seedWorkOrders(vehicles, users, stats);
-      
+
       this.logger.log('✅ Seeding tasks...');
       await this.seedTasks(orders, users, parts, stats);
-      
+
       this.logger.log('⚠️  Seeding alerts...');
       await this.seedAlerts(vehicles, stats);
 
@@ -104,7 +104,7 @@ export class SeedingService implements OnModuleInit {
       this.logger.log(`   📝 Work Orders: ${stats.orders.new} new, ${stats.orders.existing} existing`);
       this.logger.log(`   ✅ Tasks: ${stats.tasks.new} new, ${stats.tasks.existing} existing`);
       this.logger.log(`   ⚠️  Alerts: ${stats.alerts.new} new, ${stats.alerts.existing} existing`);
-      
+
       if (stats.users.new > 0) {
         this.logger.warn('⚠️  IMPORTANT: Change all default passwords immediately after first login');
       }
@@ -288,21 +288,21 @@ export class SeedingService implements OnModuleInit {
 
   private async seedParts(stats?: any): Promise<Repuesto[]> {
     const partsData = [
-      { codigo: 'ACE-15W40', nombre: 'Aceite Motor 15W40', categoria: 'Lubricantes', precio_unitario: 25000, cantidad_stock: 50, stock_minimo: 10 },
-      { codigo: 'FILT-ACE-001', nombre: 'Filtro Aceite', categoria: 'Filtros', precio_unitario: 8500, cantidad_stock: 40, stock_minimo: 8 },
-      { codigo: 'FILT-AIRE-001', nombre: 'Filtro Aire', categoria: 'Filtros', precio_unitario: 12000, cantidad_stock: 35, stock_minimo: 7 },
-      { codigo: 'FILT-COMB-001', nombre: 'Filtro Combustible', categoria: 'Filtros', precio_unitario: 15000, cantidad_stock: 30, stock_minimo: 6 },
-      { codigo: 'PAST-DEL-001', nombre: 'Pastillas Freno Delanteras', categoria: 'Frenos', precio_unitario: 45000, cantidad_stock: 25, stock_minimo: 5 },
-      { codigo: 'PAST-TRA-001', nombre: 'Pastillas Freno Traseras', categoria: 'Frenos', precio_unitario: 38000, cantidad_stock: 20, stock_minimo: 4 },
-      { codigo: 'DISC-FRE-001', nombre: 'Discos Freno', categoria: 'Frenos', precio_unitario: 85000, cantidad_stock: 15, stock_minimo: 3 },
-      { codigo: 'BAT-12V-100AH', nombre: 'Batería 12V 100Ah', categoria: 'Eléctrico', precio_unitario: 95000, cantidad_stock: 10, stock_minimo: 2 },
-      { codigo: 'NEU-215-75-R17', nombre: 'Neumático 215/75 R17.5', categoria: 'Neumáticos', precio_unitario: 120000, cantidad_stock: 20, stock_minimo: 4 },
-      { codigo: 'LIQ-REF-001', nombre: 'Líquido Refrigerante', categoria: 'Lubricantes', precio_unitario: 18000, cantidad_stock: 45, stock_minimo: 9 },
-      { codigo: 'LIQ-FRE-DOT4', nombre: 'Líquido Frenos DOT4', categoria: 'Frenos', precio_unitario: 12000, cantidad_stock: 30, stock_minimo: 6 },
-      { codigo: 'COR-DIST-001', nombre: 'Correa Distribución', categoria: 'Motor', precio_unitario: 55000, cantidad_stock: 12, stock_minimo: 2 },
-      { codigo: 'BUJ-4UN-001', nombre: 'Bujías (juego 4)', categoria: 'Motor', precio_unitario: 28000, cantidad_stock: 18, stock_minimo: 4 },
-      { codigo: 'ALT-001', nombre: 'Alternador', categoria: 'Eléctrico', precio_unitario: 180000, cantidad_stock: 5, stock_minimo: 1 },
-      { codigo: 'MOT-ARR-001', nombre: 'Motor Arranque', categoria: 'Eléctrico', precio_unitario: 150000, cantidad_stock: 4, stock_minimo: 1 },
+      { codigo: 'ACE-15W40', nombre: 'Aceite Motor 15W40', categoria: 'Lubricantes', precio_unitario: 25000, cantidad_stock: 50, stock_minimo: 10, activo: true },
+      { codigo: 'FILT-ACE-001', nombre: 'Filtro Aceite', categoria: 'Filtros', precio_unitario: 8500, cantidad_stock: 40, stock_minimo: 8, activo: true },
+      { codigo: 'FILT-AIRE-001', nombre: 'Filtro Aire', categoria: 'Filtros', precio_unitario: 12000, cantidad_stock: 35, stock_minimo: 7, activo: true },
+      { codigo: 'FILT-COMB-001', nombre: 'Filtro Combustible', categoria: 'Filtros', precio_unitario: 15000, cantidad_stock: 30, stock_minimo: 6, activo: true },
+      { codigo: 'PAST-DEL-001', nombre: 'Pastillas Freno Delanteras', categoria: 'Frenos', precio_unitario: 45000, cantidad_stock: 25, stock_minimo: 5, activo: true },
+      { codigo: 'PAST-TRA-001', nombre: 'Pastillas Freno Traseras', categoria: 'Frenos', precio_unitario: 38000, cantidad_stock: 20, stock_minimo: 4, activo: true },
+      { codigo: 'DISC-FRE-001', nombre: 'Discos Freno', categoria: 'Frenos', precio_unitario: 85000, cantidad_stock: 15, stock_minimo: 3, activo: true },
+      { codigo: 'BAT-12V-100AH', nombre: 'Batería 12V 100Ah', categoria: 'Eléctrico', precio_unitario: 95000, cantidad_stock: 10, stock_minimo: 2, activo: true },
+      { codigo: 'NEU-215-75-R17', nombre: 'Neumático 215/75 R17.5', categoria: 'Neumáticos', precio_unitario: 120000, cantidad_stock: 20, stock_minimo: 4, activo: true },
+      { codigo: 'LIQ-REF-001', nombre: 'Líquido Refrigerante', categoria: 'Lubricantes', precio_unitario: 18000, cantidad_stock: 45, stock_minimo: 9, activo: true },
+      { codigo: 'LIQ-FRE-DOT4', nombre: 'Líquido Frenos DOT4', categoria: 'Frenos', precio_unitario: 12000, cantidad_stock: 30, stock_minimo: 6, activo: true },
+      { codigo: 'COR-DIST-001', nombre: 'Correa Distribución', categoria: 'Motor', precio_unitario: 55000, cantidad_stock: 12, stock_minimo: 2, activo: true },
+      { codigo: 'BUJ-4UN-001', nombre: 'Bujías (juego 4)', categoria: 'Motor', precio_unitario: 28000, cantidad_stock: 18, stock_minimo: 4, activo: true },
+      { codigo: 'ALT-001', nombre: 'Alternador', categoria: 'Eléctrico', precio_unitario: 180000, cantidad_stock: 5, stock_minimo: 1, activo: true },
+      { codigo: 'MOT-ARR-001', nombre: 'Motor Arranque', categoria: 'Eléctrico', precio_unitario: 150000, cantidad_stock: 4, stock_minimo: 1, activo: true },
     ];
 
     const parts: Repuesto[] = [];
@@ -374,11 +374,11 @@ export class SeedingService implements OnModuleInit {
             vehiculo: vehicle,
             tipo: TipoOrdenTrabajo.Correctivo,
             estado: EstadoOrdenTrabajo.Finalizada,
-            descripcion: i % 3 === 0 
+            descripcion: i % 3 === 0
               ? 'Falla en sistema de frenos - revisión urgente'
               : i % 3 === 1
-              ? 'Problema eléctrico - luces intermitentes'
-              : 'Fuga de líquido refrigerante',
+                ? 'Problema eléctrico - luces intermitentes'
+                : 'Fuga de líquido refrigerante',
             fecha_creacion: new Date(Date.now() - (45 - i * 4) * 24 * 60 * 60 * 1000),
             fecha_cierre: new Date(Date.now() - (42 - i * 4) * 24 * 60 * 60 * 1000),
             mecanico: mechanic,
@@ -406,7 +406,7 @@ export class SeedingService implements OnModuleInit {
             vehiculo: vehicle,
             tipo: i % 2 === 0 ? TipoOrdenTrabajo.Preventivo : TipoOrdenTrabajo.Correctivo,
             estado: EstadoOrdenTrabajo.EnProgreso,
-            descripcion: i % 2 === 0 
+            descripcion: i % 2 === 0
               ? 'Servicio de mantenimiento 10,000 km'
               : 'Revisión de suspensión - ruidos anormales',
             fecha_creacion: new Date(Date.now() - (5 - i) * 24 * 60 * 60 * 1000),
@@ -563,7 +563,7 @@ export class SeedingService implements OnModuleInit {
             horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 2.5 : 0,
           });
           await this.tareaRepo.save(brakeTask);
-        if (stats) stats.tasks.new++;
+          if (stats) stats.tasks.new++;
 
           if (order.estado === EstadoOrdenTrabajo.Finalizada) {
             const pastillas = parts.find(p => p.nombre.includes('Pastillas Freno Delanteras'));
@@ -588,7 +588,7 @@ export class SeedingService implements OnModuleInit {
             horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 3.0 : 0,
           });
           await this.tareaRepo.save(electricTask);
-        if (stats) stats.tasks.new++;
+          if (stats) stats.tasks.new++;
 
           if (order.estado === EstadoOrdenTrabajo.Finalizada) {
             const bateria = parts.find(p => p.nombre.includes('Batería'));
@@ -613,7 +613,7 @@ export class SeedingService implements OnModuleInit {
             horas_trabajadas: order.estado === EstadoOrdenTrabajo.Finalizada ? 2.0 : 0,
           });
           await this.tareaRepo.save(generalTask);
-        if (stats) stats.tasks.new++;
+          if (stats) stats.tasks.new++;
 
           if (order.estado === EstadoOrdenTrabajo.Finalizada) {
             const refrigerante = parts.find(p => p.nombre.includes('Refrigerante'));
@@ -643,7 +643,7 @@ export class SeedingService implements OnModuleInit {
     // Create some sample alerts for vehicles that need maintenance
     for (let i = 0; i < 4; i++) {
       const vehicle = vehicles[i];
-      
+
       // Check if alert already exists for this vehicle
       const existingAlert = await this.alertaRepo.findOne({
         where: { vehiculo: { id: vehicle.id } },
