@@ -30,7 +30,7 @@ export class AlertsService {
     private readonly otRepo: Repository<OrdenTrabajo>,
     private readonly mailService: MailService,
     private readonly eventsGateway: EventsGateway,
-  ) {}
+  ) { }
 
   /**
    * CRON JOB - Run daily at 6:00 AM
@@ -104,37 +104,52 @@ export class AlertsService {
 
     // CASE 1: MILEAGE alerts
     if (plan.tipo_intervalo === TipoIntervalo.KM) {
-      const kmRestantes =
-        plan.proximo_kilometraje - vehiculo.kilometraje_actual;
+      // If proximo_kilometraje is not set, calculate it based on current km and interval
+      // This handles legacy data where proximo_kilometraje wasn't initialized
+      const proximoKm = plan.proximo_kilometraje ||
+        (vehiculo.kilometraje_actual + plan.intervalo);
+
+      const kmRestantes = proximoKm - vehiculo.kilometraje_actual;
       const UMBRAL_KM = 1000; // Alert 1000 km before (as specified in CLAUDE.md)
 
       if (kmRestantes <= UMBRAL_KM && kmRestantes >= 0) {
         debeAlertar = true;
-        razon = `Mantenimiento en ${kmRestantes} km (próximo: ${plan.proximo_kilometraje} km)`;
+        razon = `Mantenimiento en ${kmRestantes} km (próximo: ${proximoKm.toLocaleString()} km)`;
       } else if (kmRestantes < 0) {
         debeAlertar = true;
-        razon = `ATRASADO ${Math.abs(kmRestantes)} km (debió ser en ${plan.proximo_kilometraje} km)`;
+        razon = `ATRASADO ${Math.abs(kmRestantes).toLocaleString()} km (debió ser en ${proximoKm.toLocaleString()} km)`;
       }
     }
 
     // CASE 2: TIME alerts
     if (plan.tipo_intervalo === TipoIntervalo.Tiempo) {
-      if (!plan.proxima_fecha) {
-        return null;
+      // If proxima_fecha is not set, calculate it based on today + interval days
+      // This handles legacy data where proxima_fecha wasn't initialized
+      const hoy = new Date();
+      let proximaFecha: Date;
+
+      if (plan.proxima_fecha) {
+        // Convert to Date if it's a string (from DB)
+        proximaFecha = typeof plan.proxima_fecha === 'string'
+          ? new Date(plan.proxima_fecha)
+          : plan.proxima_fecha;
+      } else {
+        // Default: next maintenance should have been interval days from now
+        proximaFecha = new Date();
+        proximaFecha.setDate(proximaFecha.getDate() + plan.intervalo);
       }
 
-      const hoy = new Date();
       const diasRestantes = Math.ceil(
-        (plan.proxima_fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24),
+        (proximaFecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24),
       );
       const UMBRAL_DIAS = 7; // Alert 7 days before
 
       if (diasRestantes <= UMBRAL_DIAS && diasRestantes >= 0) {
         debeAlertar = true;
-        razon = `Mantenimiento en ${diasRestantes} días (fecha: ${plan.proxima_fecha.toLocaleDateString()})`;
+        razon = `Mantenimiento en ${diasRestantes} días (fecha: ${proximaFecha.toLocaleDateString('es-CL')})`;
       } else if (diasRestantes < 0) {
         debeAlertar = true;
-        razon = `ATRASADO ${Math.abs(diasRestantes)} días (debió ser el ${plan.proxima_fecha.toLocaleDateString()})`;
+        razon = `ATRASADO ${Math.abs(diasRestantes)} días (debió ser el ${proximaFecha.toLocaleDateString('es-CL')})`;
       }
     }
 
