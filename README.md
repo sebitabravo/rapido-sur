@@ -120,9 +120,11 @@ rapido-sur/
 
 ## 🔑 Credenciales de Prueba
 
-Las credenciales de prueba se generan automáticamente con el seeding inicial de la base de datos.
+Usuarios de prueba para ambiente de desarrollo/demo:
 
-Consulta los logs del backend en el primer inicio para ver las credenciales generadas.
+- `admin@rapidosur.cl` → `Admin123!`
+- `jefe@rapidosur.cl` → `Manager123!`
+- `mecanico@rapidosur.cl` → `Mechanic123!`
 
 ⚠️ **Para producción:** Cambia todas las credenciales inmediatamente.
 
