@@ -2,9 +2,11 @@ import axios, { type AxiosError } from "axios"
 import { authService } from "./auth"
 import { toast } from "sonner"
 
-// Base URL from environment variable or default
-// Frontend runs on :8080, but API (backend) runs on :3000
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+// Resolve API URL safely for production deployments.
+// Priority:
+// 1) NEXT_PUBLIC_API_URL (explicit API domain)
+// 2) Same-origin "/api" (works behind reverse proxies)
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/+$/, "")
 
 // Create axios instance
 export const apiClient = axios.create({

@@ -247,7 +247,8 @@ export default function DemoFeedbackPage() {
   const handleSendTestEmail = async () => {
     setLoadingState('sendEmail', true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mail/test`, {
+      const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/+$/, '')
+      const response = await fetch(`${apiBaseUrl}/mail/test`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`,

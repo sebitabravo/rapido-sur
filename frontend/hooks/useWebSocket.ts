@@ -22,8 +22,12 @@ interface WebSocketHook {
  * Manages connection lifecycle and event subscriptions
  */
 export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook {
+  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
+  const configuredSocketUrl = configuredApiUrl?.replace(/\/api$/, '');
+  const sameOriginUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
   const {
-    url = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000',
+    url = configuredSocketUrl || sameOriginUrl,
     autoConnect = true,
     onConnect,
     onDisconnect,
@@ -36,8 +40,10 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
   useEffect(() => {
     if (!autoConnect) return;
 
-    // Create Socket.IO connection to /events namespace
-    const socket = io(`${url}/events`, {
+    // Create Socket.IO connection to /events namespace.
+    // If url is empty, use relative namespace to avoid localhost hardcoding.
+    const socketNamespace = url ? `${url.replace(/\/+$/, '')}/events` : '/events';
+    const socket = io(socketNamespace, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
