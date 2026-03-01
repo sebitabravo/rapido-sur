@@ -12,14 +12,14 @@ interface WebSocketHookOptions {
 interface WebSocketHook {
   socket: Socket | null;
   connected: boolean;
-  subscribe: (event: string, callback: (data: any) => void) => void;
+  subscribe: (event: string, callback: (data: unknown) => void) => void;
   unsubscribe: (event: string) => void;
-  emit: (event: string, data?: any) => void;
+  emit: (event: string, data?: unknown) => void;
 }
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   if (isDev) {
     console.log(...args);
   }
@@ -94,7 +94,7 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
   /**
    * Subscribe to a WebSocket event
    */
-  const subscribe = useCallback((event: string, callback: (data: any) => void) => {
+  const subscribe = useCallback((event: string, callback: (data: unknown) => void) => {
     if (!socketRef.current) {
       if (isDev) {
         console.warn(`[WebSocket] Cannot subscribe to "${event}" - socket not connected`);
@@ -119,7 +119,7 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
   /**
    * Emit an event to the server
    */
-  const emit = useCallback((event: string, data?: any) => {
+  const emit = useCallback((event: string, data?: unknown) => {
     if (!socketRef.current || !connected) {
       if (isDev) {
         console.warn(`[WebSocket] Cannot emit "${event}" - socket not connected`);

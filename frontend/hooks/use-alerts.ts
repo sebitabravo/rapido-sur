@@ -62,6 +62,7 @@ export function useAlerts(options: UseAlertsOptions = {}) {
         await loadAlerts()
         return true
       } catch (err) {
+        console.error("Error al descartar alerta", err)
         toast.error("Error al descartar la alerta")
         return false
       }
