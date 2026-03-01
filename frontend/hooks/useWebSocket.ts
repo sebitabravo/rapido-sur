@@ -17,6 +17,14 @@ interface WebSocketHook {
   emit: (event: string, data?: any) => void;
 }
 
+const isDev = process.env.NODE_ENV !== 'production';
+
+const debugLog = (...args: any[]) => {
+  if (isDev) {
+    console.log(...args);
+  }
+};
+
 /**
  * Custom hook for WebSocket connections using Socket.IO
  * Manages connection lifecycle and event subscriptions
@@ -55,13 +63,13 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
 
     // Connection handlers
     socket.on('connect', () => {
-      console.log('[WebSocket] Connected:', socket.id);
+      debugLog('[WebSocket] Connected:', socket.id);
       setConnected(true);
       onConnect?.();
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('[WebSocket] Disconnected:', reason);
+      debugLog('[WebSocket] Disconnected:', reason);
       setConnected(false);
       onDisconnect?.();
     });
@@ -72,12 +80,12 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
     });
 
     socket.on('connected', (data) => {
-      console.log('[WebSocket] Server welcome:', data);
+      debugLog('[WebSocket] Server welcome:', data);
     });
 
     // Cleanup on unmount
     return () => {
-      console.log('[WebSocket] Cleaning up connection');
+      debugLog('[WebSocket] Cleaning up connection');
       socket.disconnect();
       socketRef.current = null;
     };
@@ -88,11 +96,13 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
    */
   const subscribe = useCallback((event: string, callback: (data: any) => void) => {
     if (!socketRef.current) {
-      console.warn(`[WebSocket] Cannot subscribe to "${event}" - socket not connected`);
+      if (isDev) {
+        console.warn(`[WebSocket] Cannot subscribe to "${event}" - socket not connected`);
+      }
       return;
     }
 
-    console.log(`[WebSocket] Subscribing to event: ${event}`);
+    debugLog(`[WebSocket] Subscribing to event: ${event}`);
     socketRef.current.on(event, callback);
   }, []);
 
@@ -102,7 +112,7 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
   const unsubscribe = useCallback((event: string) => {
     if (!socketRef.current) return;
 
-    console.log(`[WebSocket] Unsubscribing from event: ${event}`);
+    debugLog(`[WebSocket] Unsubscribing from event: ${event}`);
     socketRef.current.off(event);
   }, []);
 
@@ -111,11 +121,13 @@ export function useWebSocket(options: WebSocketHookOptions = {}): WebSocketHook 
    */
   const emit = useCallback((event: string, data?: any) => {
     if (!socketRef.current || !connected) {
-      console.warn(`[WebSocket] Cannot emit "${event}" - socket not connected`);
+      if (isDev) {
+        console.warn(`[WebSocket] Cannot emit "${event}" - socket not connected`);
+      }
       return;
     }
 
-    console.log(`[WebSocket] Emitting event: ${event}`, data);
+    debugLog(`[WebSocket] Emitting event: ${event}`, data);
     socketRef.current.emit(event, data);
   }, [connected]);
 
@@ -153,7 +165,7 @@ export function useWebSocketSubscriptions(userId?: number) {
 
     return () => {
       // Cleanup subscriptions on unmount
-      console.log('[WebSocket] Cleaning up subscriptions');
+      debugLog('[WebSocket] Cleaning up subscriptions');
     };
   }, [socket, connected, userId]);
 
