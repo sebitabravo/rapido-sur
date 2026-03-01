@@ -13,7 +13,7 @@ import { Download, FileJson, FileSpreadsheet, Printer } from "lucide-react"
 import { exportToCSV, exportToJSON, printReport } from "@/lib/export-utils"
 
 interface ExportMenuProps {
-  data: any[]
+  data: Array<Record<string, unknown>>
   filename: string
   printElementId?: string
 }

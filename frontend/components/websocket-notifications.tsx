@@ -33,26 +33,26 @@ export function WebSocketNotifications() {
     if (!connected) return;
 
     // Work Order Events
-    const handleWorkOrderCreated = (data: any) => {
+    const handleWorkOrderCreated = (data: unknown) => {
       toast.success('Nueva Orden de Trabajo', {
         description: `OT ${data.numero_ot} creada para ${data.vehiculo.patente}`,
       });
     };
 
-    const handleWorkOrderStatusChanged = (data: any) => {
+    const handleWorkOrderStatusChanged = (data: unknown) => {
       toast.info('Estado de OT Actualizado', {
         description: `OT ${data.numero_ot}: ${data.estado_anterior} → ${data.nuevo_estado}`,
       });
     };
 
-    const handleWorkOrderCompleted = (data: any) => {
+    const handleWorkOrderCompleted = (data: unknown) => {
       toast.success('Orden de Trabajo Finalizada', {
         description: `OT ${data.numero_ot} completada por ${data.mecanico.nombre_completo}`,
       });
     };
 
     // Alert Events
-    const handleAlertCreated = (data: any) => {
+    const handleAlertCreated = (data: unknown) => {
       toast.warning('Nueva Alerta Preventiva', {
         description: `${data.vehiculo.patente}: ${data.mensaje}`,
         duration: 5000,
@@ -60,7 +60,7 @@ export function WebSocketNotifications() {
     };
 
     // Inventory Events
-    const handleLowStock = (data: any) => {
+    const handleLowStock = (data: unknown) => {
       toast.warning('Alerta de Stock Bajo', {
         description: `${data.totalParts} repuesto(s) necesitan reabastecimiento`,
         duration: 5000,
@@ -68,14 +68,14 @@ export function WebSocketNotifications() {
     };
 
     // Task Events
-    const handleTaskCompleted = (data: any) => {
+    const handleTaskCompleted = (data: unknown) => {
       toast.success('Tarea Completada', {
         description: `Tarea en OT ${data.orden_trabajo.numero_ot} completada`,
       });
     };
 
     // Generic Notifications
-    const handleNotification = (notification: any) => {
+    const handleNotification = (notification: unknown) => {
       const toastFunction = {
         info: toast.info,
         success: toast.success,

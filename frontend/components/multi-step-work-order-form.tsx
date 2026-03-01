@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { ChevronLeft, ChevronRight, Check } from "lucide-react"
 
 interface MultiStepWorkOrderFormProps {
-  onSubmit: (data: any) => void
+  onSubmit: (data: unknown) => void
   onCancel: () => void
   vehicles: Array<{ id: number; patente: string; marca: string; modelo: string }>
 }

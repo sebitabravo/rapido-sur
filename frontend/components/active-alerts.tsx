@@ -56,7 +56,7 @@ export function ActiveAlerts({ onRefresh }: { onRefresh?: () => void }) {
         const lowStockParts = stockResponse.data || []
 
         // Transform low stock parts into Alert format
-        lowStockAlerts = lowStockParts.map((part: any) => ({
+        lowStockAlerts = lowStockParts.map((part: unknown) => ({
           id: `stock-${part.id}`,
           tipo_alerta: "Stock Bajo",
           mensaje: `${part.nombre} - Stock: ${part.cantidad_stock} (Mínimo: ${part.stock_minimo})`,

@@ -36,7 +36,7 @@ export function RecentWorkOrders() {
       let allOrders = response.data.items || response.data || []
 
       // Map backend snake_case to frontend camelCase
-      allOrders = allOrders.map((order: any) => ({
+      allOrders = allOrders.map((order: unknown) => ({
         ...order,
         fechaCreacion: order.fecha_creacion || order.fechaCreacion,
         fechaInicio: order.fecha_inicio || order.fechaInicio,

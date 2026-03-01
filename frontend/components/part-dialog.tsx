@@ -152,7 +152,7 @@ export function PartDialog({ open, onOpenChange, part, onSave }: PartDialogProps
       }
 
       onSave()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving part:", error)
       const message = error.response?.data?.message || "Error al guardar el repuesto"
       toast.error(message)

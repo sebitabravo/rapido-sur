@@ -35,7 +35,7 @@ type WorkOrderFormData = z.infer<typeof workOrderSchema>
 interface WorkOrderDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  workOrder?: any
+  workOrder?: unknown
   onSave: () => void
 }
 
@@ -115,7 +115,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
       setLoading(true)
       setConfirmOpen(false)
 
-      const payload: any = {
+      const payload: unknown = {
         vehiculo_id: pendingData.vehiculo_id,
         tipo: pendingData.tipo,
         prioridad: pendingData.prioridad,
@@ -136,7 +136,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
       }
       onSave()
       setPendingData(null)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving work order:", error)
       toast.error(error.response?.data?.message || "Error al guardar la orden de trabajo")
     } finally {
@@ -179,7 +179,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
 
             <div className="space-y-2">
               <Label htmlFor="tipo">Tipo *</Label>
-              <Select value={tipo} onValueChange={(value) => setValue("tipo", value as any)} disabled={loading}>
+              <Select value={tipo} onValueChange={(value) => setValue("tipo", value as unknown)} disabled={loading}>
                 <SelectTrigger id="tipo" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -193,7 +193,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, onSave }: WorkO
 
             <div className="space-y-2">
               <Label htmlFor="prioridad">Prioridad</Label>
-              <Select value={prioridad} onValueChange={(value) => setValue("prioridad", value as any)} disabled={loading}>
+              <Select value={prioridad} onValueChange={(value) => setValue("prioridad", value as unknown)} disabled={loading}>
                 <SelectTrigger id="prioridad" className="w-full">
                   <SelectValue />
                 </SelectTrigger>

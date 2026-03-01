@@ -60,7 +60,7 @@ type VehicleFormData = z.infer<typeof vehicleSchema>
 interface VehicleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  vehicle?: any
+  vehicle?: unknown
   onSave: () => void
 }
 
@@ -146,7 +146,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle, onSave }: VehicleDi
       }
       onSave()
       setPendingData(null)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving vehicle:", error)
 
       let errorMessage = "Error al guardar el vehículo"

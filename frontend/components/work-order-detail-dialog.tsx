@@ -27,7 +27,7 @@ import { formatDate } from "@/lib/utils"
 interface WorkOrderDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  workOrder: any
+  workOrder: unknown
   onUpdate: () => void
 }
 
@@ -38,7 +38,7 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [registerWorkDialogOpen, setRegisterWorkDialogOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<any>(null)
+  const [selectedTask, setSelectedTask] = useState<unknown>(null)
   const [mechanics, setMechanics] = useState<any[]>([])
   const [selectedMechanic, setSelectedMechanic] = useState<string>("")
   const [assigningMechanic, setAssigningMechanic] = useState(false)
@@ -170,7 +170,7 @@ export function WorkOrderDetailDialog({ open, onOpenChange, workOrder, onUpdate 
     setTaskDialogOpen(true)
   }
 
-  const handleEditTask = (task: any) => {
+  const handleEditTask = (task: unknown) => {
     setSelectedTask(task)
     setTaskDialogOpen(true)
   }

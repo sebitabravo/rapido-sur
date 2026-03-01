@@ -106,7 +106,7 @@ export function RegisterWorkDialog({
       toast.success("Trabajo registrado exitosamente")
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error registering work:", error)
       toast.error(error.response?.data?.message || "Error al registrar el trabajo")
     } finally {

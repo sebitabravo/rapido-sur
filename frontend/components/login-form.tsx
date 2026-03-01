@@ -38,7 +38,7 @@ export function LoginForm() {
 
       // Redirect to dashboard
       router.push("/dashboard")
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[v0] Login error:", err)
       if (err.response?.status === 401) {
         setError("Usuario o contraseña incorrectos")
