@@ -73,7 +73,7 @@ export default function AlertsPage() {
         const lowStockParts = stockResponse.data || []
 
         // Transform low stock parts into Alert format
-        lowStockAlerts = lowStockParts.map((part: any) => ({
+        lowStockAlerts = lowStockParts.map((part: unknown) => ({
           id: `stock-${part.id}`,
           tipo_alerta: "Stock Bajo",
           mensaje: `${part.nombre} - Stock: ${part.cantidad_stock} (Mínimo: ${part.stock_minimo})`,
@@ -237,7 +237,7 @@ export default function AlertsPage() {
             <CardDescription>Gestione las alertas del sistema</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="mb-4">
+            <Tabs value={filter} onValueChange={(v) => setFilter(v as unknown)} className="mb-4">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="all">
                   <Bell className="h-4 w-4 mr-2" />

@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from "@/lib/auth"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { Truck, Wrench, AlertTriangle, TrendingUp, LogOut, Users, FileText, Package, Calendar } from "lucide-react"
+import { Truck, Wrench, AlertTriangle, LogOut, Users, FileText, Package, Calendar } from "lucide-react"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { RecentWorkOrders } from "@/components/recent-work-orders"
 import { ActiveAlerts } from "@/components/active-alerts"
@@ -18,7 +16,7 @@ import { AvatarDisplay } from "@/components/avatar-selector"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState(authService.getUser())
+  const [user] = useState(authService.getUser())
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

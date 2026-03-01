@@ -75,7 +75,7 @@ export default function WorkOrdersPage() {
   const loadWorkOrders = async () => {
     try {
       setLoading(true)
-      const params: any = {}
+      const params: unknown = {}
 
       if (statusFilter !== "all") {
         params.estado = statusFilter
@@ -90,7 +90,7 @@ export default function WorkOrdersPage() {
       let orders = Array.isArray(response.data) ? response.data : (response.data?.items || [])
 
       // Map backend snake_case to frontend camelCase
-      orders = orders.map((order: any) => ({
+      orders = orders.map((order: unknown) => ({
         ...order,
         fechaCreacion: order.fecha_creacion || order.fechaCreacion,
         fechaInicio: order.fecha_inicio || order.fechaInicio,
@@ -129,8 +129,8 @@ export default function WorkOrdersPage() {
 
       // Client-side sorting
       orders.sort((a: WorkOrder, b: WorkOrder) => {
-        const aVal: any = a[sortBy as keyof WorkOrder]
-        const bVal: any = b[sortBy as keyof WorkOrder]
+        const aVal: unknown = a[sortBy as keyof WorkOrder]
+        const bVal: unknown = b[sortBy as keyof WorkOrder]
 
         if (sortOrder === "asc") {
           return aVal > bVal ? 1 : -1

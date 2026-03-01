@@ -96,7 +96,7 @@ export default function VehicleDetailPage() {
       setWorkOrders(ordersRes.data || [])
 
       const allAlerts = alertsRes.data || []
-      const vehicleAlerts = allAlerts.filter((alert: any) => alert.vehiculo?.id === Number(vehicleId))
+      const vehicleAlerts = allAlerts.filter((alert: unknown) => alert.vehiculo?.id === Number(vehicleId))
       setAlerts(vehicleAlerts)
 
       // Load preventive plan for this vehicle
@@ -113,7 +113,7 @@ export default function VehicleDetailPage() {
     try {
       const response = await api.preventivePlans.getByVehicle(Number(vehicleId))
       setPreventivePlan(response.data)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // It's normal for a vehicle to not have a plan yet
       if (error.response?.status !== 404) {
         console.error("[v0] Error loading preventive plan:", error)

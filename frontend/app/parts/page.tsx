@@ -62,7 +62,7 @@ export default function PartsPage() {
   const loadParts = async () => {
     try {
       setLoading(true)
-      const params: any = {}
+      const params: unknown = {}
       if (debouncedSearchTerm) {
         params.search = debouncedSearchTerm
       }
@@ -111,7 +111,7 @@ export default function PartsPage() {
       toast.success("Repuesto eliminado exitosamente")
       await loadParts()
       setDeleteDialogOpen(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting part:", error)
       const message = error?.response?.data?.message || "Error al eliminar el repuesto"
       toast.error(message)

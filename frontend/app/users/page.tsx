@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SkeletonTable } from "@/components/ui/skeleton-table"
 import { Pagination } from "@/components/pagination"
 import { useDebounce } from "@/hooks/use-debounce"
-import { Plus, Search, Users, ArrowLeft, Edit, Trash2, Shield, ArrowUpDown, Ban, CheckCircle } from "lucide-react"
+import { Plus, Search, Users, ArrowLeft, Edit, Shield, ArrowUpDown, Ban, CheckCircle } from "lucide-react"
 import { UserDialog } from "@/components/user-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
@@ -24,14 +24,6 @@ interface User {
   nombre_completo: string
   rol: "Administrador" | "JefeMantenimiento" | "Mecanico"
   activo: boolean
-}
-
-interface PaginatedResponse {
-  items: User[]
-  total: number
-  totalPages: number
-  page: number
-  size: number
 }
 
 export default function UsersPage() {
@@ -73,7 +65,7 @@ export default function UsersPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const params: any = {}
+      const params: Record<string, unknown> = {}
 
       if (debouncedSearchTerm) {
         params.search = debouncedSearchTerm
