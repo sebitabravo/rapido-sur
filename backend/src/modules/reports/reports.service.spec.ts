@@ -7,6 +7,7 @@ import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
 import { DetalleRepuesto } from "../part-details/entities/detalle-repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
 import { FilterReportDto } from "./dto/filter-report.dto";
+import { ReportHistory } from "./entities/report-history.entity";
 import { EstadoOrdenTrabajo, TipoOrdenTrabajo } from "../../common/enums";
 
 describe("ReportsService", () => {
@@ -31,6 +32,12 @@ describe("ReportsService", () => {
     get: jest.fn(),
   };
 
+  const mockReportHistoryRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +53,10 @@ describe("ReportsService", () => {
         {
           provide: getRepositoryToken(Tarea),
           useValue: mockTareaRepo,
+        },
+        {
+          provide: getRepositoryToken(ReportHistory),
+          useValue: mockReportHistoryRepo,
         },
         {
           provide: ConfigService,
@@ -171,9 +182,9 @@ describe("ReportsService", () => {
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([
-          { vehiculo_id: 1, costo_total: 100000 },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ vehiculo_id: 1, costo_total: 100000 }]),
       };
 
       const mockQBTipo = {
@@ -181,9 +192,9 @@ describe("ReportsService", () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([
-          { tipo: "Preventivo", total: 50000 },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ tipo: "Preventivo", total: 50000 }]),
       };
 
       const mockQBDesglose = {
@@ -207,7 +218,7 @@ describe("ReportsService", () => {
       mockOtRepo.createQueryBuilder
         .mockReturnValueOnce(mockQBVehiculos)
         .mockReturnValueOnce(mockQBTipo);
-      
+
       mockDetalleRepo.createQueryBuilder.mockReturnValue(mockQBDesglose);
       mockTareaRepo.createQueryBuilder.mockReturnValue(mockQBManoObra);
 
@@ -231,6 +242,7 @@ describe("ReportsService", () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue([]),
       };
 
@@ -252,9 +264,9 @@ describe("ReportsService", () => {
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([
-          { id: 1, patente: "ABCD-12", total: 100 },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 1, patente: "ABCD-12", total: 100 }]),
       };
 
       mockOtRepo.createQueryBuilder.mockReturnValue(mockQB);

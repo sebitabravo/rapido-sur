@@ -15,6 +15,8 @@ import { UpdateTareaDto } from "./dto/update-tarea.dto";
 import { MarkCompletedDto } from "./dto/mark-completed.dto";
 import { RolUsuario, EstadoOrdenTrabajo } from "../../common/enums";
 
+const TEST_USER = { id: 999, rol: RolUsuario.JefeMantenimiento } as Usuario;
+
 describe("TasksService", () => {
   let service: TasksService;
   let tareaRepo: Repository<Tarea>;
@@ -60,9 +62,7 @@ describe("TasksService", () => {
     otRepo = module.get<Repository<OrdenTrabajo>>(
       getRepositoryToken(OrdenTrabajo),
     );
-    usuarioRepo = module.get<Repository<Usuario>>(
-      getRepositoryToken(Usuario),
-    );
+    usuarioRepo = module.get<Repository<Usuario>>(getRepositoryToken(Usuario));
 
     jest.clearAllMocks();
   });
@@ -100,7 +100,7 @@ describe("TasksService", () => {
       mockTareaRepo.create.mockReturnValue(mockTarea);
       mockTareaRepo.save.mockResolvedValue(mockTarea);
 
-      const result = await service.create(createDto);
+      const result = await service.create(createDto, TEST_USER);
 
       expect(result).toBeDefined();
       expect(mockTareaRepo.create).toHaveBeenCalledWith(
@@ -119,10 +119,10 @@ describe("TasksService", () => {
 
       mockOtRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         NotFoundException,
       );
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         "Orden de trabajo no encontrada",
       );
     });
@@ -140,10 +140,10 @@ describe("TasksService", () => {
 
       mockOtRepo.findOne.mockResolvedValue(mockOt);
 
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         /No se pueden agregar tareas a una orden finalizada/,
       );
     });
@@ -163,10 +163,10 @@ describe("TasksService", () => {
       mockOtRepo.findOne.mockResolvedValue(mockOt);
       mockUsuarioRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         NotFoundException,
       );
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         "Mecánico no encontrado",
       );
     });
@@ -191,10 +191,10 @@ describe("TasksService", () => {
       mockOtRepo.findOne.mockResolvedValue(mockOt);
       mockUsuarioRepo.findOne.mockResolvedValue(mockAdmin);
 
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, TEST_USER)).rejects.toThrow(
         /El usuario debe ser mecánico o jefe de mantenimiento/,
       );
     });
@@ -221,7 +221,7 @@ describe("TasksService", () => {
       mockTareaRepo.create.mockReturnValue({} as Tarea);
       mockTareaRepo.save.mockResolvedValue({} as Tarea);
 
-      await expect(service.create(createDto)).resolves.not.toThrow();
+      await expect(service.create(createDto, TEST_USER)).resolves.not.toThrow();
     });
   });
 
@@ -266,9 +266,9 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.update(999, {}, mockUser),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(999, {}, mockUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw BadRequestException if task is already completed", async () => {
@@ -284,12 +284,12 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
 
-      await expect(
-        service.update(1, {}, mockUser),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.update(1, {}, mockUser),
-      ).rejects.toThrow(/No se puede modificar una tarea completada/);
+      await expect(service.update(1, {}, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.update(1, {}, mockUser)).rejects.toThrow(
+        /No se puede modificar una tarea completada/,
+      );
     });
 
     it("should throw BadRequestException if work order is finalized", async () => {
@@ -308,12 +308,12 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
 
-      await expect(
-        service.update(1, {}, mockUser),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.update(1, {}, mockUser),
-      ).rejects.toThrow(/No se pueden modificar tareas de una orden finalizada/);
+      await expect(service.update(1, {}, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.update(1, {}, mockUser)).rejects.toThrow(
+        /No se pueden modificar tareas de una orden finalizada/,
+      );
     });
 
     it("should throw ForbiddenException if mechanic tries to update task not assigned to them", async () => {
@@ -333,9 +333,9 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
 
-      await expect(
-        service.update(1, {}, mockUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.update(1, {}, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it("should allow JefeMantenimiento to update any task", async () => {
@@ -356,9 +356,7 @@ describe("TasksService", () => {
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
       mockTareaRepo.save.mockResolvedValue(mockTarea);
 
-      await expect(
-        service.update(1, {}, mockUser),
-      ).resolves.not.toThrow();
+      await expect(service.update(1, {}, mockUser)).resolves.not.toThrow();
     });
   });
 
@@ -384,9 +382,7 @@ describe("TasksService", () => {
       } as any;
 
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
-      mockTareaRepo.save.mockImplementation((tarea) =>
-        Promise.resolve(tarea),
-      );
+      mockTareaRepo.save.mockImplementation((tarea) => Promise.resolve(tarea));
 
       const result = await service.markAsCompleted(1, dto, mockUser);
 
@@ -403,9 +399,9 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.markAsCompleted(999, {}, mockUser),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.markAsCompleted(999, {}, mockUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw BadRequestException if task is already completed", async () => {
@@ -421,12 +417,12 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
 
-      await expect(
-        service.markAsCompleted(1, {}, mockUser),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.markAsCompleted(1, {}, mockUser),
-      ).rejects.toThrow("La tarea ya está completada");
+      await expect(service.markAsCompleted(1, {}, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.markAsCompleted(1, {}, mockUser)).rejects.toThrow(
+        "La tarea ya está completada",
+      );
     });
 
     it("should throw ForbiddenException if mechanic tries to complete task not assigned to them", async () => {
@@ -446,12 +442,12 @@ describe("TasksService", () => {
 
       mockTareaRepo.findOne.mockResolvedValue(mockTarea);
 
-      await expect(
-        service.markAsCompleted(1, {}, mockUser),
-      ).rejects.toThrow(ForbiddenException);
-      await expect(
-        service.markAsCompleted(1, {}, mockUser),
-      ).rejects.toThrow(/Solo el mecánico asignado puede completar esta tarea/);
+      await expect(service.markAsCompleted(1, {}, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.markAsCompleted(1, {}, mockUser)).rejects.toThrow(
+        /Solo el mecánico asignado puede completar esta tarea/,
+      );
     });
   });
 

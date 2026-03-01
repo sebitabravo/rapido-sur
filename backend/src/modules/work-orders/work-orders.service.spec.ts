@@ -15,6 +15,8 @@ import { PlanPreventivo } from "../preventive-plans/entities/plan-preventivo.ent
 import { DetalleRepuesto } from "../part-details/entities/detalle-repuesto.entity";
 import { Repuesto } from "../parts/entities/repuesto.entity";
 import { Tarea } from "../tasks/entities/tarea.entity";
+import { MailService } from "../mail/mail.service";
+import { EventsGateway } from "../websockets/events.gateway";
 import {
   EstadoOrdenTrabajo,
   TipoOrdenTrabajo,
@@ -34,11 +36,20 @@ describe("WorkOrdersService", () => {
   let tareaRepo: Repository<Tarea>;
 
   // Mock repositories
+  const mockTransactionManager = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+  };
+
   const mockOtRepo = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(),
+    manager: {
+      transaction: jest.fn(async (cb) => cb(mockTransactionManager)),
+    },
   };
 
   const mockVehiculoRepo = {
@@ -57,6 +68,9 @@ describe("WorkOrdersService", () => {
   const mockDetalleRepo = {
     create: jest.fn(),
     save: jest.fn(),
+    manager: {
+      transaction: jest.fn(async (cb) => cb(mockTransactionManager)),
+    },
   };
 
   const mockRepuestoRepo = {
@@ -70,6 +84,19 @@ describe("WorkOrdersService", () => {
 
   const mockConfigService = {
     get: jest.fn(),
+  };
+
+  const mockMailService = {
+    sendWorkOrderCreated: jest.fn(),
+    sendWorkOrderAssigned: jest.fn(),
+    sendWorkOrderCompleted: jest.fn(),
+    sendWorkOrderClosed: jest.fn(),
+  };
+
+  const mockEventsGateway = {
+    emitWorkOrderCreated: jest.fn(),
+    emitWorkOrderCompleted: jest.fn(),
+    emitWorkOrderStatusChanged: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -108,6 +135,14 @@ describe("WorkOrdersService", () => {
           provide: ConfigService,
           useValue: mockConfigService,
         },
+        {
+          provide: MailService,
+          useValue: mockMailService,
+        },
+        {
+          provide: EventsGateway,
+          useValue: mockEventsGateway,
+        },
       ],
     }).compile();
 
@@ -132,6 +167,27 @@ describe("WorkOrdersService", () => {
 
     // Clear all mocks before each test
     jest.clearAllMocks();
+
+    mockTransactionManager.findOne.mockImplementation(
+      (entity: any, opts: any) => {
+        if (entity === OrdenTrabajo) return mockOtRepo.findOne(opts);
+        if (entity === Repuesto) return mockRepuestoRepo.findOne(opts);
+        if (entity === PlanPreventivo)
+          return mockPlanRepo.findOne?.(opts) ?? null;
+        if (entity === Vehiculo) return mockVehiculoRepo.findOne(opts);
+        return null;
+      },
+    );
+    mockTransactionManager.save.mockImplementation((entity: any, data: any) => {
+      if (entity === OrdenTrabajo) return mockOtRepo.save(data);
+      if (entity === Repuesto) return mockRepuestoRepo.save(data);
+      if (entity === PlanPreventivo) return mockPlanRepo.save(data);
+      if (entity === Vehiculo) return mockVehiculoRepo.save(data);
+      return data;
+    });
+    mockTransactionManager.create.mockImplementation(
+      (entity: any, data: any) => data,
+    );
   });
 
   it("should be defined", () => {
@@ -465,9 +521,7 @@ describe("WorkOrdersService", () => {
         service.registrarTrabajo(
           1,
           {
-            repuestos: [
-              { repuesto_id: 1, cantidad: 5, tarea_id: 1 },
-            ],
+            repuestos: [{ repuesto_id: 1, cantidad: 5, tarea_id: 1 }],
           },
           mockMecanico,
         ),
@@ -688,6 +742,7 @@ describe("WorkOrdersService", () => {
           "vehiculo",
           "mecanico",
           "tareas",
+          "tareas.mecanico_asignado",
           "tareas.detalles_repuestos",
           "tareas.detalles_repuestos.repuesto",
         ],

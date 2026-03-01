@@ -6,6 +6,8 @@ import { Alerta } from "./entities/alerta.entity";
 import { PlanPreventivo } from "../preventive-plans/entities/plan-preventivo.entity";
 import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
 import { MailService } from "../mail/mail.service";
+import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
+import { EventsGateway } from "../websockets/events.gateway";
 import { EstadoVehiculo, TipoAlerta, TipoIntervalo } from "../../common/enums";
 
 describe("AlertsService", () => {
@@ -36,6 +38,18 @@ describe("AlertsService", () => {
     enviarAlertasPreventivas: jest.fn(),
   };
 
+  const mockOtRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
+  const mockEventsGateway = {
+    emitAlertCreated: jest.fn(),
+    emitAlertDismissed: jest.fn(),
+    emitWorkOrderCreated: jest.fn(),
+    emitNotification: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,8 +67,16 @@ describe("AlertsService", () => {
           useValue: mockVehiculoRepo,
         },
         {
+          provide: getRepositoryToken(OrdenTrabajo),
+          useValue: mockOtRepo,
+        },
+        {
           provide: MailService,
           useValue: mockMailService,
+        },
+        {
+          provide: EventsGateway,
+          useValue: mockEventsGateway,
         },
       ],
     }).compile();
@@ -70,9 +92,10 @@ describe("AlertsService", () => {
     mailService = module.get<MailService>(MailService);
 
     jest.clearAllMocks();
-    
+
     // Setup default mock for createQueryBuilder
     const mockQB = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([]),
@@ -186,7 +209,7 @@ describe("AlertsService", () => {
 
       const createdAlert = mockAlertaRepo.create.mock.calls[0][0];
       expect(createdAlert.mensaje).toContain("ATRASADO");
-      expect(createdAlert.mensaje).toContain("1500");
+      expect(createdAlert.mensaje).toContain("1,500");
     });
 
     it("should NOT generate alert when vehicle is more than 1000 km before threshold", async () => {
@@ -407,6 +430,7 @@ describe("AlertsService", () => {
 
       // Setup createQueryBuilder to return existing alert
       const mockQB = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue([existingAlert]),
@@ -575,7 +599,7 @@ describe("AlertsService", () => {
       const result = await service.findAll();
 
       expect(alertaRepo.find).toHaveBeenCalledWith({
-        relations: ["vehiculo"],
+        relations: ["vehiculo", "orden_trabajo", "descartada_por"],
         order: { fecha_generacion: "DESC" },
       });
       expect(result).toEqual(mockAlertas);

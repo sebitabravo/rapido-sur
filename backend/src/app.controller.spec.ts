@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
+import { getDataSourceToken } from "@nestjs/typeorm";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 
@@ -25,6 +26,13 @@ describe("AppController", () => {
           provide: ConfigService,
           useValue: mockConfigService,
         },
+        {
+          provide: getDataSourceToken(),
+          useValue: {
+            query: jest.fn(),
+            isInitialized: true,
+          },
+        },
       ],
     }).compile();
 
@@ -34,7 +42,7 @@ describe("AppController", () => {
   describe("getApiInfo", () => {
     it("should return API information", () => {
       const result = appController.getApiInfo();
-      
+
       expect(result).toHaveProperty("name");
       expect(result).toHaveProperty("version");
       expect(result).toHaveProperty("endpoints");
@@ -43,9 +51,9 @@ describe("AppController", () => {
   });
 
   describe("healthCheck", () => {
-    it("should return health status", () => {
-      const result = appController.healthCheck();
-      
+    it("should return health status", async () => {
+      const result = await appController.healthCheck();
+
       expect(result.status).toBe("OK");
       expect(result.timestamp).toBeDefined();
     });
