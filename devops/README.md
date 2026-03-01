@@ -9,7 +9,9 @@ devops/
 ├── README.md                    # Este archivo
 └── scripts/
     ├── docker.sh                # Helper para Docker en desarrollo
-    └── diagnose-production.sh   # Diagnóstico de producción
+    ├── diagnose-production.sh   # Diagnóstico de producción
+    ├── cleanup-branches.sh      # Limpieza de ramas remotas mergeadas
+    └── cleanup-logs-backups.sh  # Limpieza de logs/backups antiguos
 ```
 
 ---
@@ -87,6 +89,52 @@ docker exec -it [nombre-contenedor] bash
 - Después de hacer deploy en Dokploy para validar que todo está corriendo
 - Cuando sospechas que hay un problema en producción
 - Para debugging de problemas de conexión BD/API
+
+---
+
+## 🧹 cleanup-branches.sh
+
+**Descripción:** Detecta ramas remotas mergeadas en `origin/main` y las elimina de forma segura (excluye ramas protegidas).
+
+**Ubicación:** `devops/scripts/cleanup-branches.sh`
+
+**Uso:**
+
+```bash
+# Simulación (recomendado)
+./devops/scripts/cleanup-branches.sh --dry-run
+
+# Ejecución real
+./devops/scripts/cleanup-branches.sh --execute
+```
+
+**Protecciones incluidas:**
+- Nunca elimina `main/master/develop/dev/staging/production/release/*`
+- Siempre requiere fetch/prune previo
+- Tiene modo dry-run por defecto
+
+---
+
+## 🗂️ cleanup-logs-backups.sh
+
+**Descripción:** Limpia logs `.log` y backups `backup-*.sql.gz` más antiguos que un umbral (30 días por defecto).
+
+**Ubicación:** `devops/scripts/cleanup-logs-backups.sh`
+
+**Uso:**
+
+```bash
+# Simulación
+LOG_DIR=/var/log/rapido-sur BACKUP_DIR=/opt/rapido-sur/backups \
+  ./devops/scripts/cleanup-logs-backups.sh --dry-run
+
+# Ejecución real
+LOG_DIR=/var/log/rapido-sur BACKUP_DIR=/opt/rapido-sur/backups \
+  ./devops/scripts/cleanup-logs-backups.sh --execute
+
+# Cambiar retención (ej. 45 días)
+./devops/scripts/cleanup-logs-backups.sh --dry-run --days=45
+```
 
 ---
 

@@ -6,7 +6,9 @@ import { Alerta } from "./entities/alerta.entity";
 import { PlanPreventivo } from "../preventive-plans/entities/plan-preventivo.entity";
 import { Vehiculo } from "../vehicles/entities/vehiculo.entity";
 import { MailService } from "../mail/mail.service";
-import { EstadoVehiculo, TipoAlerta, TipoIntervalo } from "../../common/enums";
+import { EventsGateway } from "../websockets/events.gateway";
+import { OrdenTrabajo } from "../work-orders/entities/orden-trabajo.entity";
+import { EstadoVehiculo, TipoAlerta, TipoIntervalo, EstadoAlerta, EstadoOrdenTrabajo, TipoOrdenTrabajo } from "../../common/enums";
 
 describe("AlertsService", () => {
   let service: AlertsService;
@@ -14,6 +16,7 @@ describe("AlertsService", () => {
   let planRepo: Repository<PlanPreventivo>;
   let vehiculoRepo: Repository<Vehiculo>;
   let mailService: MailService;
+  let otRepo: Repository<OrdenTrabajo>;
 
   const mockAlertaRepo = {
     create: jest.fn(),
@@ -36,6 +39,16 @@ describe("AlertsService", () => {
     enviarAlertasPreventivas: jest.fn(),
   };
 
+  const mockOtRepo = {
+    createQueryBuilder: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
+  const mockEventsGateway = {
+    emitAlertCreated: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,8 +66,16 @@ describe("AlertsService", () => {
           useValue: mockVehiculoRepo,
         },
         {
+          provide: getRepositoryToken(OrdenTrabajo),
+          useValue: mockOtRepo,
+        },
+        {
           provide: MailService,
           useValue: mockMailService,
+        },
+        {
+          provide: EventsGateway,
+          useValue: mockEventsGateway,
         },
       ],
     }).compile();
@@ -68,11 +89,13 @@ describe("AlertsService", () => {
       getRepositoryToken(Vehiculo),
     );
     mailService = module.get<MailService>(MailService);
+    otRepo = module.get<Repository<OrdenTrabajo>>(getRepositoryToken(OrdenTrabajo));
 
     jest.clearAllMocks();
     
     // Setup default mock for createQueryBuilder
     const mockQB = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([]),
@@ -186,7 +209,7 @@ describe("AlertsService", () => {
 
       const createdAlert = mockAlertaRepo.create.mock.calls[0][0];
       expect(createdAlert.mensaje).toContain("ATRASADO");
-      expect(createdAlert.mensaje).toContain("1500");
+      expect(createdAlert.mensaje).toMatch(/1,?500/);
     });
 
     it("should NOT generate alert when vehicle is more than 1000 km before threshold", async () => {
@@ -407,6 +430,7 @@ describe("AlertsService", () => {
 
       // Setup createQueryBuilder to return existing alert
       const mockQB = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue([existingAlert]),
@@ -575,10 +599,54 @@ describe("AlertsService", () => {
       const result = await service.findAll();
 
       expect(alertaRepo.find).toHaveBeenCalledWith({
-        relations: ["vehiculo"],
+        relations: ["vehiculo", "orden_trabajo", "descartada_por"],
         order: { fecha_generacion: "DESC" },
       });
       expect(result).toEqual(mockAlertas);
     });
   });
+
+  describe("crearOrdenTrabajoDesdeAlerta", () => {
+    it("should create a preventive work order from a valid alert", async () => {
+      const alerta = {
+        id: 10,
+        mensaje: "TEST ALERT",
+        estado: EstadoAlerta.Pendiente,
+        vehiculo: {
+          id: 2,
+          patente: "AA-BB-22",
+          plan_preventivo: { descripcion: "Cada 10.000 km" },
+        },
+      } as any;
+
+      mockAlertaRepo.findOne.mockResolvedValue(alerta);
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      mockOtRepo.createQueryBuilder.mockReturnValue(qb);
+      mockOtRepo.create.mockImplementation((data) => data);
+      mockOtRepo.save.mockImplementation(async (data) => ({ id: 55, ...data }));
+      mockAlertaRepo.save.mockImplementation(async (data) => data);
+
+      const result = await service.crearOrdenTrabajoDesdeAlerta(10, "Revisar frenos");
+
+      expect(mockOtRepo.create).toHaveBeenCalled();
+      expect(mockOtRepo.save).toHaveBeenCalled();
+      expect(mockAlertaRepo.save).toHaveBeenCalled();
+      expect(result.tipo).toBe(TipoOrdenTrabajo.Preventivo);
+      expect(result.estado).toBe(EstadoOrdenTrabajo.Pendiente);
+      expect(result.numero_ot).toMatch(/^OT-\d{4}-\d{5}$/);
+    });
+
+    it("should fail if alert does not exist", async () => {
+      mockAlertaRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.crearOrdenTrabajoDesdeAlerta(999)).rejects.toThrow(
+        "Alerta con ID 999 no encontrada",
+      );
+    });
+  });
+
 });
