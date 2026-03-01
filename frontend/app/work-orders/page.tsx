@@ -129,8 +129,8 @@ export default function WorkOrdersPage() {
 
       // Client-side sorting
       orders.sort((a: WorkOrder, b: WorkOrder) => {
-        let aVal: any = a[sortBy as keyof WorkOrder]
-        let bVal: any = b[sortBy as keyof WorkOrder]
+        const aVal: any = a[sortBy as keyof WorkOrder]
+        const bVal: any = b[sortBy as keyof WorkOrder]
 
         if (sortOrder === "asc") {
           return aVal > bVal ? 1 : -1
