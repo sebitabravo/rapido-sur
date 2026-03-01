@@ -27,12 +27,10 @@ export const handleError = (error: unknown, customMessage?: string) => {
   toast.error(customMessage || "Ha ocurrido un error inesperado")
 }
 
-export const withErrorHandling = async <T>(\
-  fn: () => Promise<T>,\
-  errorMessage?: string,\
-)
-: Promise<T | null> =>
-{
+export const withErrorHandling = async <T>(
+  fn: () => Promise<T>,
+  errorMessage?: string,
+): Promise<T | null> => {
   try {
     return await fn()
   } catch (error) {

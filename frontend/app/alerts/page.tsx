@@ -64,7 +64,7 @@ export default function AlertsPage() {
 
       // Get maintenance alerts (kilometraje/fecha)
       const maintenanceResponse = await api.alerts.getAll()
-      let maintenanceAlerts = maintenanceResponse.data || []
+      const maintenanceAlerts = maintenanceResponse.data || []
 
       // Get low stock alerts
       let lowStockAlerts: Alert[] = []

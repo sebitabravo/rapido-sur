@@ -68,7 +68,7 @@ export default function PartsPage() {
       }
 
       const response = await api.parts.getAll(params)
-      let partsData = response.data || []
+      const partsData = response.data || []
 
       // Client-side pagination
       const totalParts = partsData.length

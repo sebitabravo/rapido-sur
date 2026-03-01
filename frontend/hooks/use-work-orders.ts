@@ -53,7 +53,7 @@ export function useWorkOrders(options: UseWorkOrdersOptions = {}) {
       setLoading(true)
       setError(null)
 
-      const params: any = { page, size, sort }
+      const params: Record<string, unknown> = { page, size, sort }
       if (search) params.search = search
       if (estado && estado !== "all") params.estado = estado
       if (prioridad && prioridad !== "all") params.prioridad = prioridad
@@ -66,8 +66,7 @@ export function useWorkOrders(options: UseWorkOrdersOptions = {}) {
       setTotalPages(data.totalPages || 0)
       setTotalItems(data.total || 0)
     } catch (err) {
-      const error = err as Error
-      setError(error)
+      setError(err as Error)
       toast.error("Error al cargar las órdenes de trabajo")
     } finally {
       setLoading(false)
@@ -81,7 +80,7 @@ export function useWorkOrders(options: UseWorkOrdersOptions = {}) {
         toast.success("Orden de trabajo creada correctamente")
         await loadWorkOrders()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al crear la orden de trabajo")
         return false
       }
@@ -96,7 +95,7 @@ export function useWorkOrders(options: UseWorkOrdersOptions = {}) {
         toast.success("Orden de trabajo actualizada correctamente")
         await loadWorkOrders()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al actualizar la orden de trabajo")
         return false
       }
@@ -111,7 +110,7 @@ export function useWorkOrders(options: UseWorkOrdersOptions = {}) {
         toast.success("Orden de trabajo eliminada correctamente")
         await loadWorkOrders()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al eliminar la orden de trabajo")
         return false
       }
