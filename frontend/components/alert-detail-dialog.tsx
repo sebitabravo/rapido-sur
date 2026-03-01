@@ -82,7 +82,7 @@ export function AlertDetailDialog({ open, onOpenChange, alertId, onSuccess }: Al
       setLoading(true)
       const response = await api.alerts.getOne(alertId)
       setAlert(response.data)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading alert details:", error)
       toast.error(error.response?.data?.message || "Error al cargar los detalles de la alerta")
       onOpenChange(false)
@@ -103,7 +103,7 @@ export function AlertDetailDialog({ open, onOpenChange, alertId, onSuccess }: Al
       toast.success("Alerta descartada correctamente")
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error dismissing alert:", error)
       toast.error(error.response?.data?.message || "Error al descartar la alerta")
     } finally {
@@ -126,7 +126,7 @@ export function AlertDetailDialog({ open, onOpenChange, alertId, onSuccess }: Al
       toast.success(`Orden de trabajo ${response.data.ordenTrabajo.numero_ot} creada exitosamente`)
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating work order:", error)
       toast.error(error.response?.data?.message || "Error al crear la orden de trabajo")
     } finally {

@@ -37,7 +37,7 @@ type PreventivePlanFormData = z.infer<typeof preventivePlanSchema>
 interface PreventivePlanDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  plan?: any
+  plan?: unknown
   vehicleId?: number
   onSave: () => void
 }
@@ -121,7 +121,7 @@ export function PreventivePlanDialog({
       setLoading(true)
 
       // Preparar payload según tipo_intervalo
-      const payload: any = {
+      const payload: unknown = {
         vehiculo_id: data.vehiculo_id,
         tipo_mantenimiento: data.tipo_mantenimiento,
         tipo_intervalo: data.tipo_intervalo,
@@ -144,7 +144,7 @@ export function PreventivePlanDialog({
         toast.success("Plan preventivo creado correctamente")
       }
       onSave()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving preventive plan:", error)
       toast.error(error.response?.data?.message || "Error al guardar el plan preventivo")
     } finally {

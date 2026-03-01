@@ -109,7 +109,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
     try {
       const response = await api.partDetails.getByTask(task.id)
       const details = response.data || []
-      setPartUsages(details.map((d: any) => ({
+      setPartUsages(details.map((d: unknown) => ({
         repuesto_id: d.repuesto.id,
         cantidad_usada: d.cantidad_usada,
         nombre: d.repuesto.nombre,
@@ -139,7 +139,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
     setPartUsages(partUsages.filter((_, i) => i !== index))
   }
 
-  const handlePartChange = (index: number, field: keyof PartUsage, value: any) => {
+  const handlePartChange = (index: number, field: keyof PartUsage, value: unknown) => {
     const updated = [...partUsages]
     
     // Convert to number if it's repuesto_id or cantidad_usada
@@ -176,7 +176,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
     setConfirmOpen(false)
 
     try {
-      const data: any = {
+      const data: unknown = {
         descripcion: formData.descripcion.trim(),
       }
 
@@ -219,7 +219,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
               }
               console.log('📤 Sending part detail:', payload)
               await api.partDetails.create(payload)
-            } catch (error: any) {
+            } catch (error: unknown) {
               console.error("Error saving part detail:", error)
               const message = error.response?.data?.message || `Error al guardar repuesto`
               toast.error(message)
@@ -231,7 +231,7 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
       if (taskCreated || task) {
         onSave()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving task:", error)
       const message = error.response?.data?.message || "Error al guardar la tarea"
       toast.error(message)

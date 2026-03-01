@@ -71,7 +71,7 @@ type UserFormData = z.infer<typeof createUserSchema>
 interface UserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  user?: any
+  user?: unknown
   onSave: () => void
 }
 
@@ -139,7 +139,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
         toast.success("Usuario creado correctamente")
       }
       onSave()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving user:", error)
 
       // Handle validation errors from backend
@@ -149,7 +149,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
         // If it's an array of validation errors (from class-validator)
         if (Array.isArray(errorData)) {
           const messages = errorData
-            .map((err: any) => {
+            .map((err: unknown) => {
               if (err.constraints) {
                 return Object.values(err.constraints).join(", ")
               }
@@ -223,7 +223,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
 
             <div className="space-y-2">
               <Label htmlFor="rol">Rol *</Label>
-              <Select value={rol} onValueChange={(value) => setValue("rol", value as any)} disabled={loading}>
+              <Select value={rol} onValueChange={(value) => setValue("rol", value as unknown)} disabled={loading}>
                 <SelectTrigger id="rol" className="w-full">
                   <SelectValue />
                 </SelectTrigger>

@@ -93,7 +93,7 @@ export function AssignMechanicDialog({
       toast.success("Mecánico asignado correctamente")
       onAssign()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error assigning mechanic:", error)
       toast.error(error.response?.data?.message || "Error al asignar el mecánico")
     } finally {

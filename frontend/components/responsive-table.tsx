@@ -6,17 +6,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
+type TableRowData = Record<string, unknown>
+
 interface Column {
   key: string
   label: string
   className?: string
-  render?: (value: any, row: any) => React.ReactNode
+  render?: (value: unknown, row: TableRowData) => React.ReactNode
 }
 
 interface ResponsiveTableProps {
   columns: Column[]
-  data: any[]
-  onRowClick?: (row: any) => void
+  data: TableRowData[]
+  onRowClick?: (row: TableRowData) => void
   emptyMessage?: string
 }
 

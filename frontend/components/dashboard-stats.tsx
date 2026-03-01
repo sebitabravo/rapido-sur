@@ -19,6 +19,19 @@ interface Stats {
   criticalAlerts: number
 }
 
+interface VehicleSummary {
+  estado: string
+}
+
+interface WorkOrderSummary {
+  estado: string
+}
+
+interface AlertSummary {
+  estado: string
+  tipo_alerta?: string
+}
+
 export function DashboardStats({ refreshTrigger = 0 }: { refreshTrigger?: number }) {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,21 +50,21 @@ export function DashboardStats({ refreshTrigger = 0 }: { refreshTrigger?: number
       ])
 
       // Backend returns paginated data for vehicles and work orders with 'items' property
-      const vehicles = vehiclesRes.data.items || []
-      const workOrders = workOrdersRes.data.items || []
+      const vehicles: VehicleSummary[] = vehiclesRes.data.items || []
+      const workOrders: WorkOrderSummary[] = workOrdersRes.data.items || []
       // Alerts return arrays directly
-      const alerts = alertsRes.data || []
+      const alerts: AlertSummary[] = alertsRes.data || []
 
       // Calculate statistics
       const statsData: Stats = {
         totalVehicles: vehicles.length,
-        activeVehicles: vehicles.filter((v: any) => v.estado === "Activo").length,
-        inMaintenanceVehicles: vehicles.filter((v: any) => v.estado === "EnMantenimiento").length,
+        activeVehicles: vehicles.filter((v) => v.estado === "Activo").length,
+        inMaintenanceVehicles: vehicles.filter((v) => v.estado === "EnMantenimiento").length,
         totalWorkOrders: workOrders.length,
-        pendingWorkOrders: workOrders.filter((wo: any) => wo.estado === "Pendiente").length,
-        completedWorkOrders: workOrders.filter((wo: any) => wo.estado === "Finalizada").length,
-        activeAlerts: alerts.filter((a: any) => a.estado === "Activa").length,
-        criticalAlerts: alerts.filter((a: any) => a.estado === "Activa" && a.tipo_alerta === "Kilometraje").length,
+        pendingWorkOrders: workOrders.filter((wo) => wo.estado === "Pendiente").length,
+        completedWorkOrders: workOrders.filter((wo) => wo.estado === "Finalizada").length,
+        activeAlerts: alerts.filter((a) => a.estado === "Activa").length,
+        criticalAlerts: alerts.filter((a) => a.estado === "Activa" && a.tipo_alerta === "Kilometraje").length,
       }
 
       setStats(statsData)
