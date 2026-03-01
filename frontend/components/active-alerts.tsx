@@ -78,11 +78,6 @@ export function ActiveAlerts({ onRefresh }: { onRefresh?: () => void }) {
       // Combine both types of alerts
       const allAlerts = [...maintenanceAlerts, ...lowStockAlerts]
 
-      // DEBUG: Log para ver qué campos vienen del backend
-      if (allAlerts.length > 0) {
-        console.log("🔍 Primera alerta:", allAlerts[0])
-        console.log("🔍 Campos disponibles:", Object.keys(allAlerts[0]))
-      }
 
       // Filter only ACTIVE maintenance alerts (stock alerts are always active)
       const activeMaintenanceAlerts = maintenanceAlerts.filter((alert: Alert) =>
@@ -91,7 +86,6 @@ export function ActiveAlerts({ onRefresh }: { onRefresh?: () => void }) {
 
       const activeAlerts = [...activeMaintenanceAlerts, ...lowStockAlerts]
 
-      console.log(`📊 Total alertas: ${allAlerts.length}, Activas: ${activeAlerts.length}, Stock Bajo: ${lowStockAlerts.length}`)
 
       setAlerts(activeAlerts.slice(0, 20))
     } catch (error) {

@@ -70,12 +70,6 @@ export class PartDetailsController {
   @ApiResponse({ status: 400, description: "Datos inválidos" })
   @ApiResponse({ status: 404, description: "Tarea o repuesto no encontrado" })
   async create(@Body() dto: RegisterUsageDto): Promise<DetalleRepuesto> {
-    console.log('📦 Received DTO:', JSON.stringify(dto, null, 2));
-    console.log('📦 DTO types:', {
-      tarea_id: typeof dto.tarea_id,
-      repuesto_id: typeof dto.repuesto_id,
-      cantidad_usada: typeof dto.cantidad_usada,
-    });
     return this.partDetailsService.registerUsage(dto);
   }
 }

@@ -109,12 +109,5 @@ export function WebSocketNotifications() {
     };
   }, [connected, subscribe, unsubscribe]);
 
-  // Show connection status
-  useEffect(() => {
-    if (connected) {
-      console.log('[WebSocket] Real-time notifications active');
-    }
-  }, [connected]);
-
   return null; // This component doesn't render anything
 }

@@ -217,7 +217,6 @@ export function TaskDialog({ open, onOpenChange, task, workOrderId, onSave }: Ta
                 repuesto_id: Number(usage.repuesto_id),
                 cantidad_usada: Number(usage.cantidad_usada)
               }
-              console.log('📤 Sending part detail:', payload)
               await api.partDetails.create(payload)
             } catch (error: any) {
               console.error("Error saving part detail:", error)
