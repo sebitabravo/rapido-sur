@@ -148,7 +148,6 @@ export default function PreventivePlansPage() {
   }
 
   const activePlans = plans.filter(p => p.activo).length
-  const inactivePlans = plans.filter(p => !p.activo).length
   const kmPlans = plans.filter(p => p.tipo_intervalo === "KM").length
 
   return (

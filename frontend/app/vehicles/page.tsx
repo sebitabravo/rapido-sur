@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SkeletonTable } from "@/components/ui/skeleton-table"
 import { Pagination } from "@/components/pagination"
 import { useDebounce } from "@/hooks/use-debounce"
-import { Plus, Search, Truck, ArrowLeft, Edit, Trash2, ArrowUpDown } from "lucide-react"
+import { Plus, Search, Truck, ArrowLeft, Edit, ArrowUpDown } from "lucide-react"
 import { VehicleDialog } from "@/components/vehicle-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
@@ -28,14 +28,6 @@ interface Vehicle {
   estado: string
   kilometraje: number
   ultimoMantenimiento?: string
-}
-
-interface PaginatedResponse {
-  items: Vehicle[]
-  total: number
-  totalPages: number
-  page: number
-  size: number
 }
 
 export default function VehiclesPage() {
@@ -71,7 +63,7 @@ export default function VehiclesPage() {
   const loadVehicles = async () => {
     try {
       setLoading(true)
-      const params: any = {
+      const params: Record<string, unknown> = {
         page: currentPage + 1,
         limit: pageSize,
       }

@@ -18,7 +18,6 @@ import {
   ArrowLeft,
   PlayCircle,
   Bell,
-  Mail,
   Zap,
   Loader2,
   Info,
@@ -36,10 +35,10 @@ import { toast } from 'sonner'
 
 export default function DemoFeedbackPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ rol?: string } | null>(null)
   const [loading, setLoading] = useState<Record<string, boolean>>({})
-  const [alerts, setAlerts] = useState<any[]>([])
-  const [vehicles, setVehicles] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<unknown[]>([])
+  const [, setVehicles] = useState<unknown[]>([])
 
   useEffect(() => {
     const currentUser = authService.getUser()
@@ -128,7 +127,7 @@ export default function DemoFeedbackPage() {
         }
       }, 1000)
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al simular desgaste', {
         description: error.response?.data?.message || error.message
       })
@@ -187,7 +186,7 @@ export default function DemoFeedbackPage() {
         })
       }, 1500)
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al crear OT', {
         description: error.response?.data?.message || error.message
       })
@@ -234,7 +233,7 @@ export default function DemoFeedbackPage() {
         })
       }, 1500)
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al obtener datos', {
         description: error.response?.data?.message || error.message
       })
@@ -266,7 +265,7 @@ export default function DemoFeedbackPage() {
           description: data.error || data.message
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al enviar email', {
         description: error.message
       })
@@ -285,7 +284,7 @@ export default function DemoFeedbackPage() {
         description: `${response.data.alertasGeneradas} alertas generadas`
       })
       await loadAlerts()
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al verificar alertas', {
         description: error.response?.data?.message || error.message
       })
@@ -302,7 +301,7 @@ export default function DemoFeedbackPage() {
         description: `${response.data.alertas.length} alertas creadas`
       })
       await loadAlerts()
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al crear alertas', {
         description: error.response?.data?.message || error.message
       })
@@ -317,7 +316,7 @@ export default function DemoFeedbackPage() {
       await api.alerts.descartar(alertId, 'Descartada desde página de testing')
       toast.success('Alerta descartada')
       await loadAlerts()
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al descartar', {
         description: error.response?.data?.message || error.message
       })
@@ -334,7 +333,7 @@ export default function DemoFeedbackPage() {
         description: `${response.data.ordenTrabajo.numero_ot}`
       })
       await loadAlerts()
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Error al crear OT', {
         description: error.response?.data?.message || error.message
       })

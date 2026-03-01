@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { User, Lock, Bell, ArrowLeft, Check } from "lucide-react"
 import { toast } from "sonner"
-import { AvatarSelector, AvatarDisplay } from "@/components/avatar-selector"
+import { AvatarSelector } from "@/components/avatar-selector"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -101,7 +101,7 @@ export default function ProfilePage() {
         confirmPassword: ""
       })
       setPasswordErrors({})
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error changing password:", error)
       toast.error("Error al cambiar la contraseña")
     } finally {
@@ -120,7 +120,7 @@ export default function ProfilePage() {
     setLoading(true)
 
     try {
-      const response = await api.users.update(user?.id || 0, {
+      await api.users.update(user?.id || 0, {
         nombre_completo: profileForm.nombre_completo,
         email: profileForm.email
       })
@@ -130,7 +130,7 @@ export default function ProfilePage() {
       setUser(updatedUser)
 
       toast.success("Perfil actualizado exitosamente")
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating profile:", error)
       toast.error("Error al actualizar el perfil")
     } finally {
@@ -158,21 +158,12 @@ export default function ProfilePage() {
       setUser(updatedUser)
       
       toast.success("Preferencias guardadas exitosamente")
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving preferences:", error)
       toast.error("Error al guardar las preferencias")
     } finally {
       setLoading(false)
     }
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map(n => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
   }
 
   const handleAvatarChange = async (avatarId: string) => {
@@ -183,7 +174,7 @@ export default function ProfilePage() {
       authService.saveAuth(authService.getToken() || "", updatedUser)
       setUser(updatedUser)
       toast.success("Avatar actualizado exitosamente")
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating avatar:", error)
       toast.error("Error al actualizar el avatar")
     } finally {

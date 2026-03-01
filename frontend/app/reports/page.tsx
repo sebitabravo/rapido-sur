@@ -88,7 +88,7 @@ export default function ReportsPage() {
       })
 
       // Map backend snake_case to frontend camelCase
-      const mappedData = (response.data || []).map((item: any) => ({
+      const mappedData = (response.data || []).map((item: unknown) => ({
         vehiculoId: item.vehiculo_id,
         patente: item.patente,
         marca: item.marca,
@@ -119,7 +119,7 @@ export default function ReportsPage() {
       const rawData = response.data?.costos_por_vehiculo || []
 
       // Map backend snake_case to frontend camelCase
-      const mappedData = rawData.map((item: any) => ({
+      const mappedData = rawData.map((item: unknown) => ({
         vehiculoId: item.vehiculo_id,
         patente: item.patente,
         totalOrdenes: parseInt(item.total_ordenes),
