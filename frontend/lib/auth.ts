@@ -19,19 +19,20 @@ const CURRENT_AUTH_VERSION = "2.0" // Increment this when auth structure changes
 /**
  * Migrate old user structure to new structure
  */
-function migrateUser(oldUser: any): User {
+function migrateUser(oldUser: unknown): User {
+  const source = oldUser as Record<string, unknown>
   // If already migrated, return as is
-  if (oldUser.rol) {
-    return oldUser as User
+  if (source.rol) {
+    return source as unknown as User
   }
 
   // Migrate old structure to new
   return {
-    id: oldUser.id,
-    email: oldUser.email,
-    rol: oldUser.role || oldUser.rol || "Mecanico", // Map old 'role' to new 'rol'
-    nombreCompleto: oldUser.nombreCompleto || oldUser.nombre || oldUser.nombre_completo || "",
-    activo: oldUser.activo !== false,
+    id: Number(source.id),
+    email: String(source.email ?? ""),
+    rol: (source.role || source.rol || "Mecanico") as User["rol"], // Map old 'role' to new 'rol'
+    nombreCompleto: String(source.nombreCompleto || source.nombre || source.nombre_completo || ""),
+    activo: source.activo !== false,
   }
 }
 
@@ -51,7 +52,7 @@ export const authService = {
             // Re-save with migrated structure
             localStorage.setItem(USER_KEY, JSON.stringify(migratedUser))
             localStorage.setItem(AUTH_VERSION_KEY, CURRENT_AUTH_VERSION)
-          } catch (error) {
+          } catch {
             // If migration fails, clear auth data
             this.clearAuth()
             localStorage.setItem(AUTH_VERSION_KEY, CURRENT_AUTH_VERSION)
@@ -89,7 +90,7 @@ export const authService = {
           const user = JSON.parse(userStr)
           // Always apply migration in case data is outdated
           return migrateUser(user)
-        } catch (error) {
+        } catch {
           return null
         }
       }

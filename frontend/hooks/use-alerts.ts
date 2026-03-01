@@ -39,15 +39,14 @@ export function useAlerts(options: UseAlertsOptions = {}) {
       setLoading(true)
       setError(null)
 
-      const params: any = {}
+      const params: Record<string, unknown> = {}
       if (activa !== undefined) params.activa = activa
 
       const response = await api.alerts.getAll(params)
       // Alerts endpoint returns direct array, not paginated response
       setAlerts(response.data || [])
     } catch (err) {
-      const error = err as Error
-      setError(error)
+      setError(err as Error)
       toast.error("Error al cargar las alertas")
     } finally {
       setLoading(false)
@@ -55,7 +54,7 @@ export function useAlerts(options: UseAlertsOptions = {}) {
   }, [activa])
 
   const dismissAlert = useCallback(
-    async (id: number) => {
+    async () => {
       // TODO: Backend endpoint not implemented yet. Need to create PATCH /alertas/:id/descartar
       toast.error("Función de descartar alertas no disponible aún. El endpoint del backend debe ser implementado.")
       console.warn("Backend endpoint /alertas/:id/descartar not implemented")

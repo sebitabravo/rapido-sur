@@ -48,7 +48,7 @@ apiClient.interceptors.response.use(
 
     // Handle HTTP errors
     const status = error.response.status
-    const data = error.response.data as any
+    const data = error.response.data as unknown
 
     switch (status) {
       case 400:
@@ -108,8 +108,8 @@ export const api = {
       patente?: string
     }) => apiClient.get("/vehiculos", { params }),
     getById: (id: number) => apiClient.get(`/vehiculos/${id}`),
-    create: (data: any) => apiClient.post("/vehiculos", data),
-    update: (id: number, data: any) => apiClient.patch(`/vehiculos/${id}`, data),
+    create: (data: unknown) => apiClient.post("/vehiculos", data),
+    update: (id: number, data: unknown) => apiClient.patch(`/vehiculos/${id}`, data),
     delete: (id: number) => apiClient.delete(`/vehiculos/${id}`),
   },
 
@@ -118,8 +118,8 @@ export const api = {
     getAll: () => apiClient.get("/planes-preventivos"),
     getById: (id: number) => apiClient.get(`/planes-preventivos/${id}`),
     getByVehicle: (vehiculoId: number) => apiClient.get(`/planes-preventivos/vehiculo/${vehiculoId}`),
-    create: (data: any) => apiClient.post("/planes-preventivos", data),
-    update: (id: number, data: any) => apiClient.patch(`/planes-preventivos/${id}`, data),
+    create: (data: unknown) => apiClient.post("/planes-preventivos", data),
+    update: (id: number, data: unknown) => apiClient.patch(`/planes-preventivos/${id}`, data),
     delete: (id: number) => apiClient.delete(`/planes-preventivos/${id}`),
   },
 
@@ -134,8 +134,8 @@ export const api = {
       mecanico_id?: number
     }) => apiClient.get("/ordenes-trabajo", { params }),
     getById: (id: number) => apiClient.get(`/ordenes-trabajo/${id}`),
-    create: (data: any) => apiClient.post("/ordenes-trabajo", data),
-    update: (id: number, data: any) => apiClient.put(`/ordenes-trabajo/${id}`, data),
+    create: (data: unknown) => apiClient.post("/ordenes-trabajo", data),
+    update: (id: number, data: unknown) => apiClient.put(`/ordenes-trabajo/${id}`, data),
     updateStatus: (id: number, estado: string) => apiClient.patch(`/ordenes-trabajo/${id}/estado`, { estado }),
     assignMechanic: (id: number, mecanico_id: number) =>
       apiClient.patch(`/ordenes-trabajo/${id}/asignar`, { mecanico_id }),
@@ -181,8 +181,8 @@ export const api = {
       apiClient.get("/usuarios", { params }),
     getMechanics: () => apiClient.get("/usuarios/mecanicos"),
     getById: (id: number) => apiClient.get(`/usuarios/${id}`),
-    create: (data: any) => apiClient.post("/usuarios", data),
-    update: (id: number, data: any) => apiClient.patch(`/usuarios/${id}`, data),
+    create: (data: unknown) => apiClient.post("/usuarios", data),
+    update: (id: number, data: unknown) => apiClient.patch(`/usuarios/${id}`, data),
     changePassword: (id: number, nueva_password: string) =>
       apiClient.patch(`/usuarios/${id}/cambiar-password`, { nueva_password }),
     delete: (id: number) => apiClient.delete(`/usuarios/${id}`),
@@ -193,8 +193,8 @@ export const api = {
     getAll: () => apiClient.get("/tareas"),
     getById: (id: number) => apiClient.get(`/tareas/${id}`),
     getByWorkOrder: (ordenTrabajoId: number) => apiClient.get(`/tareas/orden-trabajo/${ordenTrabajoId}`),
-    create: (data: any) => apiClient.post("/tareas", data),
-    update: (id: number, data: any) => apiClient.patch(`/tareas/${id}`, data),
+    create: (data: unknown) => apiClient.post("/tareas", data),
+    update: (id: number, data: unknown) => apiClient.patch(`/tareas/${id}`, data),
     complete: (id: number) => apiClient.patch(`/tareas/${id}/completar`),
     delete: (id: number) => apiClient.delete(`/tareas/${id}`),
   },
@@ -203,8 +203,8 @@ export const api = {
   parts: {
     getAll: (params?: { search?: string; categoria?: string }) => apiClient.get("/repuestos", { params }),
     getById: (id: number) => apiClient.get(`/repuestos/${id}`),
-    create: (data: any) => apiClient.post("/repuestos", data),
-    update: (id: number, data: any) => apiClient.patch(`/repuestos/${id}`, data),
+    create: (data: unknown) => apiClient.post("/repuestos", data),
+    update: (id: number, data: unknown) => apiClient.patch(`/repuestos/${id}`, data),
     delete: (id: number) => apiClient.delete(`/repuestos/${id}`),
     updateStock: (id: number, cantidad: number) => apiClient.patch(`/repuestos/${id}/stock`, { cantidad }),
     getLowStock: () => apiClient.get("/repuestos/stock-bajo"),
@@ -214,8 +214,8 @@ export const api = {
   // Part Details (Detalles de Repuestos en Tareas)
   partDetails: {
     getByTask: (tareaId: number) => apiClient.get(`/detalle-repuestos/tarea/${tareaId}`),
-    create: (data: any) => apiClient.post("/detalle-repuestos", data),
-    update: (id: number, data: any) => apiClient.patch(`/detalle-repuestos/${id}`, data),
+    create: (data: unknown) => apiClient.post("/detalle-repuestos", data),
+    update: (id: number, data: unknown) => apiClient.patch(`/detalle-repuestos/${id}`, data),
     delete: (id: number) => apiClient.delete(`/detalle-repuestos/${id}`),
   },
 }

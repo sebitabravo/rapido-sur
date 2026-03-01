@@ -35,7 +35,7 @@ export function useUsers(options: UseUsersOptions = {}) {
       setLoading(true)
       setError(null)
 
-      const params: any = { page, size, sort }
+      const params: Record<string, unknown> = { page, size, sort }
       if (search) params.search = search
       if (role && role !== "all") params.role = role
 
@@ -46,8 +46,7 @@ export function useUsers(options: UseUsersOptions = {}) {
       setTotalPages(data.totalPages || 0)
       setTotalItems(data.total || 0)
     } catch (err) {
-      const error = err as Error
-      setError(error)
+      setError(err as Error)
       toast.error("Error al cargar los usuarios")
     } finally {
       setLoading(false)
@@ -61,7 +60,7 @@ export function useUsers(options: UseUsersOptions = {}) {
         toast.success("Usuario creado correctamente")
         await loadUsers()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al crear el usuario")
         return false
       }
@@ -76,7 +75,7 @@ export function useUsers(options: UseUsersOptions = {}) {
         toast.success("Usuario actualizado correctamente")
         await loadUsers()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al actualizar el usuario")
         return false
       }
@@ -91,7 +90,7 @@ export function useUsers(options: UseUsersOptions = {}) {
         toast.success("Usuario eliminado correctamente")
         await loadUsers()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al eliminar el usuario")
         return false
       }

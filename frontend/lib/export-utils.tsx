@@ -1,4 +1,4 @@
-export const exportToCSV = (data: any[], filename: string) => {
+export const exportToCSV = (data: unknown[], filename: string) => {
   if (data.length === 0) return
 
   const headers = Object.keys(data[0])
@@ -26,7 +26,7 @@ export const exportToCSV = (data: any[], filename: string) => {
   document.body.removeChild(link)
 }
 
-export const exportToJSON = (data: any[], filename: string) => {
+export const exportToJSON = (data: unknown[], filename: string) => {
   const jsonContent = JSON.stringify(data, null, 2)
   const blob = new Blob([jsonContent], { type: "application/json" })
   const link = document.createElement("a")

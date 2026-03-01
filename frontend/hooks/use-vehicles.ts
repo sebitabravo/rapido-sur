@@ -40,7 +40,7 @@ export function useVehicles(options: UseVehiclesOptions = {}) {
       setLoading(true)
       setError(null)
 
-      const params: any = { page, size, sort }
+      const params: Record<string, unknown> = { page, size, sort }
       if (search) params.search = search
       if (estado && estado !== "all") params.estado = estado
       if (tipo && tipo !== "all") params.tipo = tipo
@@ -52,8 +52,7 @@ export function useVehicles(options: UseVehiclesOptions = {}) {
       setTotalPages(data.totalPages || 0)
       setTotalItems(data.total || 0)
     } catch (err) {
-      const error = err as Error
-      setError(error)
+      setError(err as Error)
       toast.error("Error al cargar los vehículos")
     } finally {
       setLoading(false)
@@ -67,7 +66,7 @@ export function useVehicles(options: UseVehiclesOptions = {}) {
         toast.success("Vehículo creado correctamente")
         await loadVehicles()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al crear el vehículo")
         return false
       }
@@ -82,7 +81,7 @@ export function useVehicles(options: UseVehiclesOptions = {}) {
         toast.success("Vehículo actualizado correctamente")
         await loadVehicles()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al actualizar el vehículo")
         return false
       }
@@ -97,7 +96,7 @@ export function useVehicles(options: UseVehiclesOptions = {}) {
         toast.success("Vehículo eliminado correctamente")
         await loadVehicles()
         return true
-      } catch (err) {
+      } catch {
         toast.error("Error al eliminar el vehículo")
         return false
       }
